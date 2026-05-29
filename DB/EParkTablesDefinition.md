@@ -132,7 +132,7 @@ Aclaraciones generales sobre el diseno de las tablas:
 - province varchar(80) null
 - contactEmail varchar(120) null
 - enabled bit default 1
-- createdAt datetime2 default SYSUTCDATETIME()
+- createdAt datetime2 default GETUTCDATE()
 - updatedAt datetime2 null
 - deleted bit default 0
 - deletedAt datetime2 null
@@ -152,7 +152,7 @@ Aclaraciones generales sobre el diseno de las tablas:
 - operationEndTime time not null -- Hora de fin de operacion.
 - totalSpaces int not null -- Cantidad total declarada para la zona.
 - statusId smallint (FK) -- FK a Statuses. Ej: ACTIVE, INACTIVE.
-- createdAt datetime2 default SYSUTCDATETIME()
+- createdAt datetime2 default GETUTCDATE()
 - updatedAt datetime2 null
 - createdBy int (FK) null -- Administrador que creo la zona.
 - updatedBy int (FK) null
@@ -172,7 +172,7 @@ Aclaraciones generales sobre el diseno de las tablas:
 - statusId smallint (FK) -- FK a Statuses. Ej: AVAILABLE, OCCUPIED, DISABLED.
 - latitude decimal(9,6) null -- Opcional si se quiere ubicar el espacio exacto.
 - longitude decimal(9,6) null
-- createdAt datetime2 default SYSUTCDATETIME()
+- createdAt datetime2 default GETUTCDATE()
 - updatedAt datetime2 null
 - deleted bit default 0
 - deletedAt datetime2 null
@@ -190,7 +190,7 @@ Aclaraciones generales sobre el diseno de las tablas:
 - currencyCode char(3) default 'CRC' -- Se deja fijo/simple para Costa Rica.
 - validFrom datetime2 not null default SYSUTCDATETIME()
 - validTo datetime2 null -- Null significa tarifa vigente.
-- createdAt datetime2 default SYSUTCDATETIME()
+- createdAt datetime2 default GETUTCDATE()
 - createdBy int (FK) null
 - deleted bit default 0
 - deletedAt datetime2 null
@@ -209,7 +209,7 @@ Aclaraciones generales sobre el diseno de las tablas:
 - plateNumber varchar(20) not null -- Placa del vehiculo.
 - alias varchar(80) null -- Nombre opcional: "Carro de casa".
 - enabled bit default 1
-- createdAt datetime2 default SYSUTCDATETIME()
+- createdAt datetime2 default GETUTCDATE()
 - updatedAt datetime2 null
 - deleted bit default 0
 - deletedAt datetime2 null
@@ -229,7 +229,7 @@ Aclaraciones generales sobre el diseno de las tablas:
 - expirationMonth tinyint null
 - expirationYear smallint null
 - enabled bit default 1
-- createdAt datetime2 default SYSUTCDATETIME()
+- createdAt datetime2 default GETUTCDATE()
 - updatedAt datetime2 null
 - deleted bit default 0
 - deletedAt datetime2 null
@@ -256,7 +256,7 @@ Aclaraciones generales sobre el diseno de las tablas:
 - elapsedMinutes int null -- Puede calcularse, pero se guarda al cerrar para reportes simples.
 - totalAmount decimal(10,2) null -- Monto final calculado.
 - statusId smallint (FK) -- FK a Statuses. Ej: ACTIVE, FINISHED, CANCELLED, EXPIRED.
-- createdAt datetime2 default SYSUTCDATETIME()
+- createdAt datetime2 default GETUTCDATE()
 - updatedAt datetime2 null
 - deleted bit default 0
 - deletedAt datetime2 null
@@ -279,9 +279,9 @@ Aclaraciones generales sobre el diseno de las tablas:
 - statusId smallint (FK) -- FK a Statuses. Ej: PENDING, APPROVED, REJECTED.
 - providerReference varchar(120) null -- Referencia simulada o sandbox.
 - receiptNumber varchar(80) unique null -- Comprobante digital.
-- requestedAt datetime2 default SYSUTCDATETIME()
+- requestedAt datetime2 default GETUTCDATE()
 - processedAt datetime2 null
-- createdAt datetime2 default SYSUTCDATETIME()
+- createdAt datetime2 default GETUTCDATE()
 - deleted bit default 0
 - deletedAt datetime2 null
 - CONSTRAINT CK_Payments_Amount CHECK (amount >= 0)
@@ -309,7 +309,7 @@ Aclaraciones generales sobre el diseno de las tablas:
 - fineDate datetime2 not null
 - amount decimal(10,2) not null
 - statusId smallint (FK) -- FK a Statuses. Ej: PENDING, PAID, CANCELLED.
-- createdAt datetime2 default SYSUTCDATETIME()
+- createdAt datetime2 default GETUTCDATE()
 - updatedAt datetime2 null
 - deleted bit default 0
 - deletedAt datetime2 null
@@ -328,9 +328,9 @@ Aclaraciones generales sobre el diseno de las tablas:
 - startedAt datetime2 not null
 - endedAt datetime2 null
 - totalAmount decimal(10,2) null
-- lastSyncedAt datetime2 default SYSUTCDATETIME()
+- lastSyncedAt datetime2 default GETUTCDATE()
 - checksum varchar(64) null -- Ayuda a detectar cambios entre local y servidor.
-- createdAt datetime2 default SYSUTCDATETIME()
+- createdAt datetime2 default GETUTCDATE()
 - deleted bit default 0
 
 # SECCION 6: Notificaciones, reportes y auditoria
@@ -351,7 +351,7 @@ Aclaraciones generales sobre el diseno de las tablas:
 - sentAt datetime2 null
 - readAt datetime2 null
 - statusId smallint (FK) -- FK a Statuses. Ej: PENDING, SENT, READ, FAILED.
-- createdAt datetime2 default SYSUTCDATETIME()
+- createdAt datetime2 default GETUTCDATE()
 - deleted bit default 0
 - deletedAt datetime2 null
 
@@ -369,7 +369,7 @@ Aclaraciones generales sobre el diseno de las tablas:
 - newValue nvarchar(max) null -- JSON opcional con valores nuevos.
 - description varchar(300) null
 - ipAddress varchar(50) null
-- createdAt datetime2 default SYSUTCDATETIME()
+- createdAt datetime2 default GETUTCDATE()
 - deleted bit default 0
 
 # Relaciones principales
