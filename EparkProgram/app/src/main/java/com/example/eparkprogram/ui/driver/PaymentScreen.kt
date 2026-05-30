@@ -1,0 +1,321 @@
+package com.example.eparkprogram.ui.driver
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import com.example.eparkprogram.navigation.Routes
+
+data class SavedCard(val id: Int, val last4: String, val brand: String, val expiry: String)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PaymentScreen(navController: NavController) {
+
+    var currentStep by remember { mutableStateOf(0) }
+    val steps = listOf("Método", "Confirmar", "Completado")
+    var selectedCardId by remember { mutableStateOf(1) }
+
+    val savedCards = listOf(
+        SavedCard(1, "4242", "Visa", "12/25"),
+        SavedCard(2, "5555", "Mastercard", "08/26")
+    )
+
+    val sessionSummary = mapOf(
+        "zone" to "Zona A - Centro",
+        "spot" to "0042",
+        "duration" to "1h 42m",
+        "rate" to "₡500/hora",
+        "total" to "₡850"
+    )
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Pago") },
+                navigationIcon = {
+                    if (currentStep < 2) {
+                        IconButton(onClick = {
+                            if (currentStep == 0) navController.popBackStack()
+                            else currentStep--
+                        }) {
+                            Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1565C0),
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(24.dp)
+        ) {
+            // Indicador de pasos
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                steps.forEachIndexed { index, label ->
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = if (index <= currentStep) Color(0xFF1565C0)
+                            else Color(0xFFE0E0E0),
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                if (index < currentStep) {
+                                    Icon(
+                                        Icons.Filled.Check,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                } else {
+                                    Text(
+                                        "${index + 1}",
+                                        color = if (index <= currentStep) Color.White else Color.Gray,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            label,
+                            fontSize = 10.sp,
+                            textAlign = TextAlign.Center,
+                            color = if (index <= currentStep) Color(0xFF1565C0) else Color.Gray
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Paso 0 — Seleccionar método
+            if (currentStep == 0) {
+                Text("Seleccioná tu método de pago", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                savedCards.forEach { card ->
+                    Card(
+                        onClick = { selectedCardId = card.id },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (selectedCardId == card.id)
+                                Color(0xFFE3F2FD) else Color.White
+                        ),
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.CreditCard,
+                                    contentDescription = null,
+                                    tint = Color(0xFF1565C0)
+                                )
+                                Column {
+                                    Text(
+                                        "${card.brand} •••• ${card.last4}",
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Text(
+                                        "Vence ${card.expiry}",
+                                        fontSize = 12.sp,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                            if (selectedCardId == card.id) {
+                                Icon(
+                                    Icons.Filled.CheckCircle,
+                                    contentDescription = null,
+                                    tint = Color(0xFF1565C0)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Paso 1 — Confirmar
+            if (currentStep == 1) {
+                Text("Resumen de pago", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        listOf(
+                            "Zona" to sessionSummary["zone"],
+                            "Espacio" to sessionSummary["spot"],
+                            "Duración" to sessionSummary["duration"],
+                            "Tarifa" to sessionSummary["rate"]
+                        ).forEach { (label, value) ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(label, color = Color.Gray, fontSize = 13.sp)
+                                Text(value ?: "", fontWeight = FontWeight.Medium)
+                            }
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Total", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(
+                                sessionSummary["total"] ?: "",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp,
+                                color = Color(0xFF1565C0)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                val selectedCard = savedCards.find { it.id == selectedCardId }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(Icons.Filled.CreditCard, tint = Color(0xFF1565C0), contentDescription = null)
+                        Text(
+                            "${selectedCard?.brand} •••• ${selectedCard?.last4}",
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            // Paso 2 — Completado
+            if (currentStep == 2) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Icon(
+                        Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(80.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("¡Pago exitoso!", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Tu comprobante está disponible en tu historial.",
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F8E9))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Total pagado", color = Color.Gray, fontSize = 13.sp)
+                                Text(
+                                    sessionSummary["total"] ?: "",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF2E7D32),
+                                    fontSize = 18.sp
+                                )
+                            }
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("N° comprobante", color = Color.Gray, fontSize = 13.sp)
+                                Text("REC-20260529-001", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            if (currentStep < 2) {
+                Button(
+                    onClick = { currentStep++ },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
+                ) {
+                    Text(
+                        if (currentStep == 1) "Confirmar pago" else "Continuar",
+                        fontSize = 16.sp
+                    )
+                }
+            } else {
+                Button(
+                    onClick = {
+                        navController.navigate(Routes.DRIVER_HOME) {
+                            popUpTo(Routes.DRIVER_HOME) { inclusive = true }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
+                ) {
+                    Text("Volver al inicio", fontSize = 16.sp)
+                }
+            }
+        }
+    }
+}
