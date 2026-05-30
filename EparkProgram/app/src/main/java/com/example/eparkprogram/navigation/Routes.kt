@@ -1,3 +1,5 @@
+package com.example.eparkprogram.navigation
+
 object Routes {
     const val SPLASH = "splash"
     const val LOGIN = "login"
