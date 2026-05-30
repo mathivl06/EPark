@@ -40,7 +40,7 @@ Aclaraciones generales sobre el diseno de las tablas:
 - nationalId varchar(30) null -- Cedula del conductor; puede ser null para administradores precargados.
 - phoneNumber varchar(30) null -- Telefono opcional de contacto.
 - emailVerified bit default 0 -- Indica si el correo fue verificado.
-- statusId smallint (FK) -- FK a Statuses. Ej: ACTIVE, PENDING_VERIFICATION, SUSPENDED.
+- status varchar(30) not null default 'PENDING_VERIFICATION' -- ACTIVE, PENDING_VERIFICATION, SUSPENDED.
 - lastLoginAt datetime2 null
 - createdAt datetime2 default SYSUTCDATETIME()
 - updatedAt datetime2 null
@@ -104,21 +104,6 @@ Aclaraciones generales sobre el diseno de las tablas:
 - deleted bit default 0
 - deletedAt datetime2 null
 
-## Statuses
-*Proposito tabla: Catalogo comun de estados para usuarios, sesiones, pagos, multas y notificaciones.*
-*Paso de etapa: Transversal - Catalogos*
-*Staging Table: No*
-
-- statusId smallint IDENTITY(1,1) (PK)
-- statusCode varchar(50) unique not null -- Ej: ACTIVE, INACTIVE, PENDING, PAID, CANCELLED, EXPIRED.
-- statusName varchar(80) not null
-- appliesTo varchar(50) not null -- Ej: USER, SESSION, PAYMENT, FINE, NOTIFICATION, ZONE.
-- description varchar(200) null
-- enabled bit default 1
-- createdAt datetime2 default SYSUTCDATETIME()
-- updatedAt datetime2 null
-- deleted bit default 0
-- deletedAt datetime2 null
 
 # SECCION 2: Municipalidades, zonas y espacios
 
@@ -151,7 +136,7 @@ Aclaraciones generales sobre el diseno de las tablas:
 - operationStartTime time not null -- Hora de inicio de operacion.
 - operationEndTime time not null -- Hora de fin de operacion.
 - totalSpaces int not null -- Cantidad total declarada para la zona.
-- statusId smallint (FK) -- FK a Statuses. Ej: ACTIVE, INACTIVE.
+- status varchar(20) not null default 'ACTIVE' -- ACTIVE, INACTIVE.
 - createdAt datetime2 default GETUTCDATE()
 - updatedAt datetime2 null
 - createdBy int (FK) null -- Administrador que creo la zona.
@@ -169,7 +154,7 @@ Aclaraciones generales sobre el diseno de las tablas:
 - spaceId int IDENTITY(1,1) (PK)
 - zoneId int (FK)
 - spaceCode varchar(4) not null -- Numero visible de cuatro digitos usado por el conductor.
-- statusId smallint (FK) -- FK a Statuses. Ej: AVAILABLE, OCCUPIED, DISABLED.
+- status varchar(20) not null default 'AVAILABLE' -- AVAILABLE, OCCUPIED, DISABLED.
 - latitude decimal(9,6) null -- Opcional si se quiere ubicar el espacio exacto.
 - longitude decimal(9,6) null
 - createdAt datetime2 default GETUTCDATE()
@@ -255,7 +240,7 @@ Aclaraciones generales sobre el diseno de las tablas:
 - endedAt datetime2 null
 - elapsedMinutes int null -- Puede calcularse, pero se guarda al cerrar para reportes simples.
 - totalAmount decimal(10,2) null -- Monto final calculado.
-- statusId smallint (FK) -- FK a Statuses. Ej: ACTIVE, FINISHED, CANCELLED, EXPIRED.
+- status varchar(20) not null default 'ACTIVE' -- ACTIVE, FINISHED, CANCELLED, EXPIRED.
 - createdAt datetime2 default GETUTCDATE()
 - updatedAt datetime2 null
 - deleted bit default 0
@@ -276,7 +261,7 @@ Aclaraciones generales sobre el diseno de las tablas:
 - fineId bigint (FK) null -- Se usa cuando el pago corresponde a una multa.
 - amount decimal(10,2) not null
 - currencyCode char(3) default 'CRC'
-- statusId smallint (FK) -- FK a Statuses. Ej: PENDING, APPROVED, REJECTED.
+- status varchar(20) not null default 'PENDING' -- PENDING, APPROVED, REJECTED.
 - providerReference varchar(120) null -- Referencia simulada o sandbox.
 - receiptNumber varchar(80) unique null -- Comprobante digital.
 - requestedAt datetime2 default GETUTCDATE()
@@ -308,30 +293,15 @@ Aclaraciones generales sobre el diseno de las tablas:
 - reason varchar(200) not null -- Ej: Tiempo vencido, espacio no pagado.
 - fineDate datetime2 not null
 - amount decimal(10,2) not null
-- statusId smallint (FK) -- FK a Statuses. Ej: PENDING, PAID, CANCELLED.
+- status varchar(20) not null default 'PENDING' -- PENDING, PAID, CANCELLED.
 - createdAt datetime2 default GETUTCDATE()
 - updatedAt datetime2 null
 - deleted bit default 0
 - deletedAt datetime2 null
 - CONSTRAINT CK_Fines_Amount CHECK (amount >= 0)
 
-## OfflineSessionSnapshots
-*Proposito tabla: Guarda un resumen sincronizable del historial reciente que la app puede almacenar localmente y reconciliar con el backend.*
-*Paso de etapa: Conductor - Historial offline*
-*Staging Table: No*
 
-- snapshotId bigint IDENTITY(1,1) (PK)
-- userId int (FK)
-- sessionId bigint (FK)
-- vehiclePlate varchar(20) not null
-- zoneName varchar(120) not null
-- startedAt datetime2 not null
-- endedAt datetime2 null
-- totalAmount decimal(10,2) null
-- lastSyncedAt datetime2 default GETUTCDATE()
-- checksum varchar(64) null -- Ayuda a detectar cambios entre local y servidor.
-- createdAt datetime2 default GETUTCDATE()
-- deleted bit default 0
+# SECCION 6: Notificaciones, reportes y auditoria
 
 # SECCION 6: Notificaciones, reportes y auditoria
 
@@ -350,27 +320,11 @@ Aclaraciones generales sobre el diseno de las tablas:
 - scheduledAt datetime2 null
 - sentAt datetime2 null
 - readAt datetime2 null
-- statusId smallint (FK) -- FK a Statuses. Ej: PENDING, SENT, READ, FAILED.
+- status varchar(20) not null default 'PENDING' -- PENDING, SENT, READ, FAILED.
 - createdAt datetime2 default GETUTCDATE()
 - deleted bit default 0
 - deletedAt datetime2 null
 
-## AuditLogs
-*Proposito tabla: Bitacora general para acciones relevantes del sistema, especialmente cambios administrativos en zonas y tarifas.*
-*Paso de etapa: Transversal - Auditoria*
-*Staging Table: No*
-
-- auditLogId bigint IDENTITY(1,1) (PK)
-- userId int (FK) null -- Usuario que ejecuto la accion.
-- action varchar(80) not null -- Ej: CREATE_ZONE, UPDATE_TARIFF, DISABLE_ZONE, LOGIN_FAILED.
-- entityName varchar(80) not null -- Tabla o entidad afectada.
-- entityId bigint null -- Id del registro afectado.
-- oldValue nvarchar(max) null -- JSON opcional con valores anteriores.
-- newValue nvarchar(max) null -- JSON opcional con valores nuevos.
-- description varchar(300) null
-- ipAddress varchar(50) null
-- createdAt datetime2 default GETUTCDATE()
-- deleted bit default 0
 
 # Relaciones principales
 
@@ -391,7 +345,6 @@ Aclaraciones generales sobre el diseno de las tablas:
 - `Vehicles` 1:M `Fines`
 - `Fines` 1:0..1 `Payments`
 - `Users` 1:M `Notifications`
-- `Users` 1:M `AuditLogs`
 
 # Datos iniciales recomendados
 
@@ -400,30 +353,6 @@ Aclaraciones generales sobre el diseno de las tablas:
 - DRIVER -- Conductor registrado.
 - MUNICIPAL_ADMIN -- Administrador municipal precargado.
 
-## Statuses
-
-- USER / PENDING_VERIFICATION -- Usuario registrado pendiente de verificacion por correo.
-- USER / ACTIVE -- Usuario activo.
-- USER / SUSPENDED -- Usuario suspendido.
-- ZONE / ACTIVE -- Zona habilitada.
-- ZONE / INACTIVE -- Zona desactivada.
-- SPACE / AVAILABLE -- Espacio disponible.
-- SPACE / OCCUPIED -- Espacio ocupado.
-- SPACE / DISABLED -- Espacio deshabilitado.
-- SESSION / ACTIVE -- Sesion de parqueo activa.
-- SESSION / FINISHED -- Sesion finalizada.
-- SESSION / CANCELLED -- Sesion cancelada.
-- SESSION / EXPIRED -- Sesion vencida.
-- PAYMENT / PENDING -- Pago pendiente.
-- PAYMENT / APPROVED -- Pago aprobado.
-- PAYMENT / REJECTED -- Pago rechazado.
-- FINE / PENDING -- Multa pendiente.
-- FINE / PAID -- Multa pagada.
-- FINE / CANCELLED -- Multa anulada.
-- NOTIFICATION / PENDING -- Notificacion pendiente.
-- NOTIFICATION / SENT -- Notificacion enviada.
-- NOTIFICATION / READ -- Notificacion leida.
-- NOTIFICATION / FAILED -- Notificacion fallida.
 
 # Indices sugeridos
 
@@ -431,14 +360,14 @@ Aclaraciones generales sobre el diseno de las tablas:
 - IDX_UserRoles_UserId sobre `UserRoles(userId)` -- Resolucion de rol.
 - IDX_AdminProfiles_Municipality sobre `MunicipalAdminProfiles(municipalityId)` -- Administradores por municipalidad.
 - IDX_ParkingZones_Municipality sobre `ParkingZones(municipalityId)` -- Zonas por municipalidad.
-- IDX_ParkingSpaces_Zone_Status sobre `ParkingSpaces(zoneId, statusId)` -- Espacios disponibles por zona.
+- IDX_ParkingSpaces_Zone_Status sobre `ParkingSpaces(zoneId, status)` -- Espacios disponibles por zona.
 - IDX_ZoneTariffs_Zone_ValidTo sobre `ZoneTariffs(zoneId, validTo)` -- Tarifa vigente.
 - IDX_Vehicles_User sobre `Vehicles(userId)` -- Vehiculos del conductor.
-- IDX_ParkingSessions_User_Status sobre `ParkingSessions(userId, statusId)` -- Sesion activa del conductor.
+- IDX_ParkingSessions_User_Status sobre `ParkingSessions(userId, status)` -- Sesion activa del conductor.
 - IDX_ParkingSessions_Municipality_Dates sobre `ParkingSessions(municipalityId, startedAt, endedAt)` -- Reportes por rango de fechas.
-- IDX_Fines_User_Status sobre `Fines(userId, statusId)` -- Multas pendientes.
+- IDX_Fines_User_Status sobre `Fines(userId, status)` -- Multas pendientes.
 - IDX_Payments_User_Date sobre `Payments(userId, requestedAt)` -- Historial de pagos.
-- IDX_Notifications_User_Status sobre `Notifications(userId, statusId)` -- Notificaciones pendientes.
+- IDX_Notifications_User_Status sobre `Notifications(userId, status)` -- Notificaciones pendientes.
 
 # Consultas funcionales esperadas por el backend
 
@@ -478,4 +407,3 @@ Aclaraciones generales sobre el diseno de las tablas:
 3. Decidir si las notificaciones se simulan completamente o si se integra Firebase Cloud Messaging.
 4. Definir si el correo de verificacion sera real, mock o solo cambio de estado en base de datos.
 5. Validar si se necesita tabla separada de `Permissions`; por ahora se evita para mantener simple el alcance.
-6. Validar si `OfflineSessionSnapshots` se mantiene en SQL Server o si solo se documenta como equivalente de Room/local storage en Android.
