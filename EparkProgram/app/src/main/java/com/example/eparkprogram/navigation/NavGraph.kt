@@ -16,6 +16,11 @@ import com.example.eparkprogram.ui.driver.PaymentScreen
 import com.example.eparkprogram.ui.driver.FinesScreen
 import com.example.eparkprogram.ui.driver.HistoryScreen
 import com.example.eparkprogram.ui.driver.ProfileScreen
+import com.example.eparkprogram.ui.admin.AdminDashboardScreen
+import com.example.eparkprogram.ui.admin.ZoneManagementScreen
+import com.example.eparkprogram.ui.admin.ZoneEditorScreen
+import com.example.eparkprogram.ui.admin.RateManagementScreen
+import com.example.eparkprogram.ui.admin.ReportsScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -89,14 +94,37 @@ fun NavGraph(navController: NavHostController) {
         composable(Routes.PAYMENT) {
             PaymentScreen(navController = navController)
         }
+
         composable(Routes.FINES) {
             FinesScreen(navController = navController)
         }
+
         composable(Routes.HISTORY) {
             HistoryScreen(navController = navController)
         }
+
         composable(Routes.PROFILE) {
             ProfileScreen(navController = navController)
+        }
+
+        composable(Routes.ADMIN_HOME) {
+            AdminDashboardScreen(navController = navController)
+        }
+
+        composable(Routes.ZONE_MANAGEMENT) {
+            ZoneManagementScreen(navController = navController)
+        }
+
+        composable(Routes.ZONE_EDITOR) {
+            ZoneEditorScreen(navController = navController)
+        }
+
+        composable(Routes.RATE_MANAGEMENT) {
+            RateManagementScreen(navController = navController)
+        }
+
+        composable(Routes.REPORTS) {
+            ReportsScreen(navController = navController)
         }
 
         // El resto de pantallas las vas agregando acá conforme las creás
