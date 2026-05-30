@@ -234,11 +234,13 @@ Aclaraciones generales sobre el diseno de las tablas:
 - zoneId int (FK)
 - spaceId int (FK)
 - tariffId int (FK) -- Tarifa vigente al iniciar la sesion.
+- syncedFromDevice bit default 0
 - hourlyRateApplied decimal(10,2) not null -- Valor congelado para evitar cambios por nuevas tarifas.
 - startedAt datetime2 not null default SYSUTCDATETIME()
 - expectedEndAt datetime2 null -- Opcional si la app maneja tiempo estimado.
 - endedAt datetime2 null
 - elapsedMinutes int null -- Puede calcularse, pero se guarda al cerrar para reportes simples.
+- deviceCreatedAt datetime2 null
 - totalAmount decimal(10,2) null -- Monto final calculado.
 - status varchar(20) not null default 'ACTIVE' -- ACTIVE, FINISHED, CANCELLED, EXPIRED.
 - createdAt datetime2 default GETUTCDATE()
