@@ -1,9 +1,11 @@
 package com.example.eparkprogram.ui.auth
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -18,6 +20,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+// Cambiá esto a false antes de entregar
+private const val DEV_MODE = true
 
 @Composable
 fun LoginScreen(
@@ -52,6 +57,7 @@ fun LoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -130,7 +136,7 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Botón login — por ahora detecta admin por el email
+        // Botón login principal
         Button(
             onClick = {
                 if (validate()) {
@@ -152,5 +158,44 @@ fun LoginScreen(
         TextButton(onClick = onGoToRegister) {
             Text("¿No tenés cuenta? Registrate")
         }
+
+        // ── Acceso rápido solo para desarrollo ──────────────────
+        if (DEV_MODE) {
+            Spacer(modifier = Modifier.height(24.dp))
+
+            HorizontalDivider()
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                "Acceso rápido (solo desarrollo)",
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onLoginAsDriver,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Conductor", fontSize = 13.sp)
+                }
+                OutlinedButton(
+                    onClick = onLoginAsAdmin,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Admin", fontSize = 13.sp)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
