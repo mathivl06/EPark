@@ -1,0 +1,33 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: epark-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Your_strong_password123"
+    ports:
+      - "1433:1433"
+    volumes:
+      - epark_sql_data:/var/opt/mssql
+
+  api:
+    build:
+      context: ./backend
+    container_name: epark-api
+    depends_on:
+      - sqlserver
+    environment:
+      PORT: "8080"
+      JWT_SECRET: "dev-only-change-me"
+      SQL_SERVER: "sqlserver"
+      SQL_PORT: "1433"
+      SQL_DATABASE: "EParkDB"
+      SQL_USER: "sa"
+      SQL_PASSWORD: "Your_strong_password123"
+      SQL_ENCRYPT: "false"
+      SQL_TRUST_CERT: "true"
+    ports:
+      - "8080:8080"
+
+volumes:
+  epark_sql_data:
