@@ -15,30 +15,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.eparkprogram.data.model.ParkingSession
+import com.example.eparkprogram.data.repository.ParkingRepository
 import com.example.eparkprogram.ui.shared.BottomNavBar
-
-data class SessionHistory(
-    val id: Int,
-    val zone: String,
-    val spot: String,
-    val plate: String,
-    val date: String,
-    val duration: String,
-    val amount: String,
-    val isOffline: Boolean = false
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(navController: NavController) {
 
-    val sessions = listOf(
-        SessionHistory(1, "Zona A - Centro", "0042", "ABC-1234", "29 may 2026", "1h 42m", "₡850"),
-        SessionHistory(2, "Zona B - Plaza", "0015", "ABC-1234", "28 may 2026", "0h 30m", "₡200"),
-        SessionHistory(3, "Zona C - Mercado", "0087", "XYZ-5678", "27 may 2026", "2h 15m", "₡1.125", true),
-        SessionHistory(4, "Zona A - Centro", "0033", "ABC-1234", "25 may 2026", "0h 45m", "₡375"),
-        SessionHistory(5, "Zona E - Hospital", "0061", "ABC-1234", "20 may 2026", "3h 00m", "₡1.500")
-    )
+    val parkingRepository = remember { ParkingRepository() }
+    var sessions by remember { mutableStateOf<List<ParkingSession>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMsg by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        try {
+            sessions = parkingRepository.getSessionHistory()
+        } catch (e: Exception) {
+            errorMsg = "No se pudo cargar el historial"
+        } finally {
+            isLoading = false
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -52,87 +50,142 @@ fun HistoryScreen(navController: NavController) {
         },
         bottomBar = { BottomNavBar(navController) }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                Text(
-                    "${sessions.size} sesiones registradas",
-                    fontSize = 13.sp,
-                    color = Color.Gray
-                )
-                Spacer(modifier = Modifier.height(4.dp))
+
+        when {
+            isLoading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Color(0xFF1565C0))
+                }
             }
-            items(sessions) { session ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(2.dp)
+            errorMsg.isNotEmpty() -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(errorMsg, color = Color.Red)
+                }
+            }
+            sessions.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Filled.History,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Sin sesiones registradas", color = Color.Gray)
+                    }
+                }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        Text(
+                            "${sessions.size} sesiones registradas",
+                            fontSize = 13.sp,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                    items(sessions) { session ->
+                        val elapsedMin = session.elapsedMinutes ?: 0
+                        val hours = elapsedMin / 60
+                        val mins = elapsedMin % 60
+                        val duration = "${hours}h ${mins}m"
+                        val amount = "₡${String.format("%.0f", session.totalAmount ?: 0.0)}"
+
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = CardDefaults.cardElevation(2.dp)
                         ) {
-                            Text(session.zone, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            if (session.isOffline) {
-                                Surface(
-                                    shape = RoundedCornerShape(50),
-                                    color = Color(0xFFFF6F00)
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        "OFFLINE",
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                        color = Color.White,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold
+                                        session.zoneName,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp
+                                    )
+                                    if (session.syncedFromDevice == true) {
+                                        Surface(
+                                            shape = RoundedCornerShape(50),
+                                            color = Color(0xFFFF6F00)
+                                        ) {
+                                            Text(
+                                                "OFFLINE",
+                                                modifier = Modifier.padding(
+                                                    horizontal = 6.dp,
+                                                    vertical = 2.dp
+                                                ),
+                                                color = Color.White,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Filled.LocalParking,
+                                            contentDescription = null,
+                                            tint = Color.Gray,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            "Espacio ${session.spaceCode}",
+                                            fontSize = 12.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                    session.plateNumber?.let { plate ->
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                Icons.Filled.DirectionsCar,
+                                                contentDescription = null,
+                                                tint = Color.Gray,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(plate, fontSize = 12.sp, color = Color.Gray)
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text(
+                                            session.startedAt,
+                                            fontSize = 12.sp,
+                                            color = Color.Gray
+                                        )
+                                        Text(duration, fontSize = 13.sp)
+                                    }
+                                    Text(
+                                        amount,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp,
+                                        color = Color(0xFF1565C0)
                                     )
                                 }
                             }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Filled.LocalParking,
-                                    contentDescription = null,
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Espacio ${session.spot}", fontSize = 12.sp, color = Color.Gray)
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Filled.DirectionsCar,
-                                    contentDescription = null,
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(session.plate, fontSize = 12.sp, color = Color.Gray)
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(session.date, fontSize = 12.sp, color = Color.Gray)
-                                Text(session.duration, fontSize = 13.sp)
-                            }
-                            Text(
-                                session.amount,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                color = Color(0xFF1565C0)
-                            )
                         }
                     }
                 }

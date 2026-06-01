@@ -15,36 +15,35 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.eparkprogram.data.model.Fine
+import com.example.eparkprogram.data.repository.ParkingRepository
 import com.example.eparkprogram.navigation.Routes
 import com.example.eparkprogram.ui.shared.BottomNavBar
-
-data class Fine(
-    val id: Int,
-    val type: String,
-    val zone: String,
-    val date: String,
-    val amount: Int,
-    val dueDate: String,
-    val isPaid: Boolean
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FinesScreen(navController: NavController) {
 
+    val parkingRepository = remember { ParkingRepository() }
+    var fines by remember { mutableStateOf<List<Fine>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMsg by remember { mutableStateOf("") }
     var selectedTab by remember { mutableStateOf(0) }
     var showPayDialog by remember { mutableStateOf(false) }
     var selectedFine by remember { mutableStateOf<Fine?>(null) }
 
-    val fines = listOf(
-        Fine(1, "Tiempo vencido", "Zona A - Centro", "5 may 2026", 5000, "20 may 2026", false),
-        Fine(2, "Espacio inválido", "Zona B - Plaza", "1 may 2026", 3500, "16 may 2026", false),
-        Fine(3, "Tiempo vencido", "Zona C - Mercado", "15 abr 2026", 5000, "30 abr 2026", true),
-        Fine(4, "Sin pago", "Zona A - Centro", "10 abr 2026", 4000, "25 abr 2026", true)
-    )
+    LaunchedEffect(Unit) {
+        try {
+            fines = parkingRepository.getFines()
+        } catch (e: Exception) {
+            errorMsg = "No se pudieron cargar las multas"
+        } finally {
+            isLoading = false
+        }
+    }
 
-    val pending = fines.filter { !it.isPaid }
-    val paid = fines.filter { it.isPaid }
+    val pending = fines.filter { it.status == "PENDING" }
+    val paid = fines.filter { it.status == "PAID" }
 
     if (showPayDialog && selectedFine != null) {
         AlertDialog(
@@ -55,7 +54,7 @@ fun FinesScreen(navController: NavController) {
                     Text("¿Confirmás el pago de esta multa?")
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Monto: ₡${selectedFine!!.amount}",
+                        "Monto: ₡${String.format("%.0f", selectedFine!!.amount)}",
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1565C0)
                     )
@@ -89,6 +88,21 @@ fun FinesScreen(navController: NavController) {
         bottomBar = { BottomNavBar(navController) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Color(0xFF1565C0))
+                }
+                return@Scaffold
+            }
+
+            if (errorMsg.isNotEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(errorMsg, color = Color.Red)
+                }
+                return@Scaffold
+            }
+
             TabRow(selectedTabIndex = selectedTab) {
                 Tab(
                     selected = selectedTab == 0,
@@ -123,6 +137,7 @@ fun FinesScreen(navController: NavController) {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(currentList) { fine ->
+                        val isPaid = fine.status == "PAID"
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
@@ -141,19 +156,17 @@ fun FinesScreen(navController: NavController) {
                                         Icon(
                                             Icons.Filled.Warning,
                                             contentDescription = null,
-                                            tint = if (fine.isPaid) Color.Gray
-                                            else Color(0xFFE53935),
+                                            tint = if (isPaid) Color.Gray else Color(0xFFE53935),
                                             modifier = Modifier.size(20.dp)
                                         )
-                                        Text(fine.type, fontWeight = FontWeight.Bold)
+                                        Text(fine.reason, fontWeight = FontWeight.Bold)
                                     }
                                     Surface(
                                         shape = RoundedCornerShape(50),
-                                        color = if (fine.isPaid) Color(0xFF4CAF50)
-                                        else Color(0xFFE53935)
+                                        color = if (isPaid) Color(0xFF4CAF50) else Color(0xFFE53935)
                                     ) {
                                         Text(
-                                            if (fine.isPaid) "PAGADA" else "PENDIENTE",
+                                            if (isPaid) "PAGADA" else "PENDIENTE",
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                             color = Color.White,
                                             fontSize = 10.sp,
@@ -162,27 +175,21 @@ fun FinesScreen(navController: NavController) {
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text(fine.zone, fontSize = 13.sp, color = Color.Gray)
+                                Text("Multa #${fine.fineNumber}", fontSize = 13.sp, color = Color.Gray)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("Fecha: ${fine.date}", fontSize = 12.sp, color = Color.Gray)
+                                    Text("Fecha: ${fine.fineDate}", fontSize = 12.sp, color = Color.Gray)
                                     Text(
-                                        "₡${fine.amount}",
+                                        "₡${String.format("%.0f", fine.amount)}",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 16.sp,
-                                        color = if (fine.isPaid) Color.Gray else Color(0xFFE53935)
+                                        color = if (isPaid) Color.Gray else Color(0xFFE53935)
                                     )
                                 }
-                                if (!fine.isPaid) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        "Vence: ${fine.dueDate}",
-                                        fontSize = 12.sp,
-                                        color = Color(0xFFE53935)
-                                    )
+                                if (!isPaid) {
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Button(
                                         onClick = {

@@ -42,6 +42,9 @@ interface ApiService {
 
     @GET("driver/fines")
     suspend fun getFines(): List<Fine>
+
+    @GET("driver/sessions/history")
+    suspend fun getSessionHistory(): List<ParkingSession>
 }
 
 data class LoginRequest(

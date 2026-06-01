@@ -7,7 +7,10 @@ data class ParkingSession(
     val plateNumber: String? = null,
     val startedAt: String,
     val hourlyRateApplied: Double,
-    val status: String
+    val status: String,
+    val elapsedMinutes: Int? = null,
+    val totalAmount: Double? = null,
+    val syncedFromDevice: Boolean? = false
 )
 
 data class FinishedSession(

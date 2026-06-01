@@ -24,7 +24,7 @@ import com.example.eparkprogram.data.repository.AuthRepository
 import kotlinx.coroutines.launch
 
 // Cambiá esto a false antes de entregar
-private const val DEV_MODE = false
+private const val DEV_MODE = true
 
 @Composable
 fun LoginScreen(

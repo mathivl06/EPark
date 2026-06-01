@@ -24,4 +24,6 @@ class ParkingRepository(
         api.finishSession(sessionId)
 
     suspend fun getFines(): List<Fine> = api.getFines()
+
+    suspend fun getSessionHistory(): List<ParkingSession> = api.getSessionHistory()
 }
