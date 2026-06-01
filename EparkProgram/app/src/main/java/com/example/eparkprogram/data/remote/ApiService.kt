@@ -45,6 +45,9 @@ interface ApiService {
 
     @GET("driver/sessions/history")
     suspend fun getSessionHistory(): List<ParkingSession>
+
+    @GET("admin/reports/summary")
+    suspend fun getAdminReportSummary(): AdminReportSummary
 }
 
 data class LoginRequest(
@@ -85,4 +88,10 @@ data class StartSessionRequest(
 
 data class StartSessionResponse(
     val sessionId: Long
+)
+
+data class AdminReportSummary(
+    val totalZones: Int,
+    val activeSessions: Int,
+    val revenue: Double
 )

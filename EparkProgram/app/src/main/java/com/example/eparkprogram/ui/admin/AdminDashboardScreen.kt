@@ -16,19 +16,64 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.eparkprogram.data.remote.AdminReportSummary
+import com.example.eparkprogram.data.remote.RetrofitClient
 import com.example.eparkprogram.navigation.Routes
 
-data class StatCard(val title: String, val value: String, val subtitle: String, val icon: ImageVector, val color: Color)
+data class StatCard(
+    val title: String,
+    val value: String,
+    val subtitle: String,
+    val icon: ImageVector,
+    val color: Color
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDashboardScreen(navController: NavController) {
 
+    var summary by remember { mutableStateOf<AdminReportSummary?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        try {
+            summary = RetrofitClient.api.getAdminReportSummary()
+        } catch (e: Exception) {
+            // Si falla mostramos ceros
+        } finally {
+            isLoading = false
+        }
+    }
+
     val stats = listOf(
-        StatCard("Sesiones activas", "142", "+12% hoy", Icons.Filled.LocalParking, Color(0xFF1565C0)),
-        StatCard("Ingresos hoy", "₡458.900", "+8% vs ayer", Icons.Filled.AttachMoney, Color(0xFF2E7D32)),
-        StatCard("Zonas activas", "24", "2 fuera de línea", Icons.Filled.Map, Color(0xFFE65100)),
-        StatCard("Multas pendientes", "37", "+5 hoy", Icons.Filled.Receipt, Color(0xFFE53935))
+        StatCard(
+            "Sesiones activas",
+            if (isLoading) "..." else "${summary?.activeSessions ?: 0}",
+            "en este momento",
+            Icons.Filled.LocalParking,
+            Color(0xFF1565C0)
+        ),
+        StatCard(
+            "Ingresos totales",
+            if (isLoading) "..." else "₡${String.format("%.0f", summary?.revenue ?: 0.0)}",
+            "acumulado",
+            Icons.Filled.AttachMoney,
+            Color(0xFF2E7D32)
+        ),
+        StatCard(
+            "Zonas activas",
+            if (isLoading) "..." else "${summary?.totalZones ?: 0}",
+            "habilitadas",
+            Icons.Filled.Map,
+            Color(0xFFE65100)
+        ),
+        StatCard(
+            "Multas pendientes",
+            "—",
+            "próximamente",
+            Icons.Filled.Receipt,
+            Color(0xFFE53935)
+        )
     )
 
     val recentActivity = listOf(
@@ -77,7 +122,6 @@ fun AdminDashboardScreen(navController: NavController) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            // Stats en grid 2x2
             Text("Resumen del día", fontWeight = FontWeight.Bold, fontSize = 16.sp)
 
             Row(
@@ -132,7 +176,6 @@ fun AdminDashboardScreen(navController: NavController) {
                 }
             }
 
-            // Accesos rápidos
             Text("Gestión", fontWeight = FontWeight.Bold, fontSize = 16.sp)
 
             Row(
@@ -149,7 +192,12 @@ fun AdminDashboardScreen(navController: NavController) {
                         modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(Icons.Filled.Map, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(32.dp))
+                        Icon(
+                            Icons.Filled.Map,
+                            contentDescription = null,
+                            tint = Color(0xFF1565C0),
+                            modifier = Modifier.size(32.dp)
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text("Zonas", fontWeight = FontWeight.Medium, fontSize = 13.sp)
                     }
@@ -164,7 +212,12 @@ fun AdminDashboardScreen(navController: NavController) {
                         modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(Icons.Filled.AttachMoney, contentDescription = null, tint = Color(0xFFE65100), modifier = Modifier.size(32.dp))
+                        Icon(
+                            Icons.Filled.AttachMoney,
+                            contentDescription = null,
+                            tint = Color(0xFFE65100),
+                            modifier = Modifier.size(32.dp)
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text("Tarifas", fontWeight = FontWeight.Medium, fontSize = 13.sp)
                     }
@@ -179,14 +232,18 @@ fun AdminDashboardScreen(navController: NavController) {
                         modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(Icons.Filled.Assessment, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(32.dp))
+                        Icon(
+                            Icons.Filled.Assessment,
+                            contentDescription = null,
+                            tint = Color(0xFF2E7D32),
+                            modifier = Modifier.size(32.dp)
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text("Reportes", fontWeight = FontWeight.Medium, fontSize = 13.sp)
                     }
                 }
             }
 
-            // Actividad reciente
             Text("Actividad reciente", fontWeight = FontWeight.Bold, fontSize = 16.sp)
 
             Card(
@@ -211,7 +268,12 @@ fun AdminDashboardScreen(navController: NavController) {
                                     modifier = Modifier.size(36.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
-                                        Icon(icon, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(18.dp))
+                                        Icon(
+                                            icon,
+                                            contentDescription = null,
+                                            tint = Color(0xFF1565C0),
+                                            modifier = Modifier.size(18.dp)
+                                        )
                                     }
                                 }
                                 Text(description, fontSize = 13.sp)
@@ -219,7 +281,7 @@ fun AdminDashboardScreen(navController: NavController) {
                             Text(time, fontSize = 11.sp, color = Color.Gray)
                         }
                         if (index < recentActivity.size - 1)
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     }
                 }
             }
