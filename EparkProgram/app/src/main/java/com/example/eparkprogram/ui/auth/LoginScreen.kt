@@ -20,9 +20,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.eparkprogram.data.repository.AuthRepository
+import kotlinx.coroutines.launch
 
 // Cambiá esto a false antes de entregar
-private const val DEV_MODE = true
+private const val DEV_MODE = false
 
 @Composable
 fun LoginScreen(
@@ -35,6 +37,10 @@ fun LoginScreen(
     var showPassword by remember { mutableStateOf(false) }
     var emailError by remember { mutableStateOf("") }
     var passwordError by remember { mutableStateOf("") }
+    var generalError by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val authRepository = remember { AuthRepository() }
 
     fun validate(): Boolean {
         var valid = true
@@ -140,17 +146,43 @@ fun LoginScreen(
         Button(
             onClick = {
                 if (validate()) {
-                    if (email.contains("admin", ignoreCase = true)) onLoginAsAdmin()
-                    else onLoginAsDriver()
+                    isLoading = true
+                    generalError = ""
+                    scope.launch {
+                        runCatching { authRepository.login(email, password) }
+                            .onSuccess { user ->
+                                isLoading = false
+                                if (user.roleCode == "MUNICIPAL_ADMIN") onLoginAsAdmin()
+                                else onLoginAsDriver()
+                            }
+                            .onFailure { error ->
+                                isLoading = false
+                                generalError = error.message ?: "No se pudo iniciar sesion"
+                            }
+                    }
                 }
             },
+            enabled = !isLoading,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
         ) {
-            Text("Iniciar sesión", fontSize = 16.sp)
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text("Iniciar sesión", fontSize = 16.sp)
+            }
+        }
+
+        if (generalError.isNotBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(generalError, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
