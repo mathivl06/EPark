@@ -6,6 +6,7 @@ import com.example.eparkprogram.data.model.ParkingSession
 import com.example.eparkprogram.data.model.Vehicle
 import com.example.eparkprogram.data.remote.DriverHomeResponse
 import com.example.eparkprogram.data.remote.RetrofitClient
+import com.example.eparkprogram.data.remote.SessionHistoryDto
 import com.example.eparkprogram.data.remote.StartSessionRequest
 
 class ParkingRepository(
@@ -25,5 +26,5 @@ class ParkingRepository(
 
     suspend fun getFines(): List<Fine> = api.getFines()
 
-    suspend fun getSessionHistory(): List<ParkingSession> = api.getSessionHistory()
+    suspend fun getSessionHistory(): List<SessionHistoryDto> = api.getSessionHistory()
 }

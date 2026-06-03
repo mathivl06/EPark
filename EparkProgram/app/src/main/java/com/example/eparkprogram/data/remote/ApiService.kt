@@ -10,6 +10,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.PUT
 import retrofit2.http.Query
 
 interface ApiService {
@@ -44,7 +45,22 @@ interface ApiService {
     suspend fun getFines(): List<Fine>
 
     @GET("driver/sessions/history")
-    suspend fun getSessionHistory(): List<ParkingSession>
+    suspend fun getSessionHistory(): List<SessionHistoryDto>
+
+    @GET("admin/zones")
+    suspend fun getAdminZones(): List<AdminZoneDto>
+
+    @POST("admin/zones")
+    suspend fun createAdminZone(@Body request: AdminZoneRequest): AdminZoneDto
+
+    @PUT("admin/zones/{id}")
+    suspend fun updateAdminZone(@Path("id") zoneId: Int, @Body request: AdminZoneRequest): AdminZoneDto
+
+    @GET("admin/zones/{id}/tariff")
+    suspend fun getZoneTariff(@Path("id") zoneId: Int): ZoneTariffDto
+
+    @PUT("admin/zones/{id}/tariff")
+    suspend fun updateZoneTariff(@Path("id") zoneId: Int, @Body request: ZoneTariffRequest): ZoneTariffDto
 
     @GET("admin/reports/summary")
     suspend fun getAdminReportSummary(): AdminReportSummary
@@ -88,6 +104,69 @@ data class StartSessionRequest(
 
 data class StartSessionResponse(
     val sessionId: Long
+)
+
+data class SessionHistoryDto(
+    val sessionId: Long,
+    val zoneName: String,
+    val spaceCode: String,
+    val plateNumber: String,
+    val startedAt: String,
+    val endedAt: String?,
+    val elapsedMinutes: Int?,
+    val hourlyRateApplied: Double,
+    val totalAmount: Double?,
+    val status: String,
+    val paymentId: Long?,
+    val paymentStatus: String?,
+    val receiptNumber: String?
+)
+
+data class AdminZoneDto(
+    val zoneId: Int,
+    val municipalityId: Int,
+    val municipalityName: String,
+    val zoneName: String,
+    val description: String?,
+    val latitude: Double,
+    val longitude: Double,
+    val operationStartTime: String,
+    val operationEndTime: String,
+    val totalSpaces: Int,
+    val status: String,
+    val spaceCount: Int,
+    val occupiedSpaces: Int,
+    val availableSpaces: Int,
+    val hourlyRate: Double,
+    val currencyCode: String
+)
+
+data class AdminZoneRequest(
+    val zoneName: String,
+    val description: String?,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val operationStartTime: String,
+    val operationEndTime: String,
+    val totalSpaces: Int,
+    val status: String,
+    val hourlyRate: Double? = null,
+    val currencyCode: String = "CRC"
+)
+
+data class ZoneTariffDto(
+    val tariffId: Int,
+    val zoneId: Int,
+    val zoneName: String?,
+    val hourlyRate: Double,
+    val currencyCode: String,
+    val validFrom: String,
+    val validTo: String?
+)
+
+data class ZoneTariffRequest(
+    val hourlyRate: Double,
+    val currencyCode: String = "CRC"
 )
 
 data class AdminReportSummary(
