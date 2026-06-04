@@ -115,8 +115,12 @@ fun NavGraph(navController: NavHostController) {
             ZoneManagementScreen(navController = navController)
         }
 
+        composable("${Routes.ZONE_EDITOR}/{zoneId}") { backStack ->
+            val zoneId = backStack.arguments?.getString("zoneId")?.toIntOrNull()
+            ZoneEditorScreen(navController = navController, zoneId = zoneId)
+        }
         composable(Routes.ZONE_EDITOR) {
-            ZoneEditorScreen(navController = navController)
+            ZoneEditorScreen(navController = navController, zoneId = null)
         }
 
         composable(Routes.RATE_MANAGEMENT) {

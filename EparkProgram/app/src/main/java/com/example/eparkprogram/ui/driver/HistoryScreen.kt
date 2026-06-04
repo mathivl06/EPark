@@ -15,7 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.eparkprogram.data.model.ParkingSession
+import com.example.eparkprogram.data.remote.SessionHistoryDto
 import com.example.eparkprogram.data.repository.ParkingRepository
 import com.example.eparkprogram.ui.shared.BottomNavBar
 
@@ -24,7 +24,7 @@ import com.example.eparkprogram.ui.shared.BottomNavBar
 fun HistoryScreen(navController: NavController) {
 
     val parkingRepository = remember { ParkingRepository() }
-    var sessions by remember { mutableStateOf<List<ParkingSession>>(emptyList()) }
+    var sessions by remember { mutableStateOf<List<SessionHistoryDto>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMsg by remember { mutableStateOf("") }
 
@@ -50,7 +50,6 @@ fun HistoryScreen(navController: NavController) {
         },
         bottomBar = { BottomNavBar(navController) }
     ) { padding ->
-
         when {
             isLoading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -101,6 +100,7 @@ fun HistoryScreen(navController: NavController) {
                         val mins = elapsedMin % 60
                         val duration = "${hours}h ${mins}m"
                         val amount = "₡${String.format("%.0f", session.totalAmount ?: 0.0)}"
+                        val isPaid = session.paymentStatus == "APPROVED"
 
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -118,22 +118,20 @@ fun HistoryScreen(navController: NavController) {
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 15.sp
                                     )
-                                    if (session.syncedFromDevice == true) {
-                                        Surface(
-                                            shape = RoundedCornerShape(50),
-                                            color = Color(0xFFFF6F00)
-                                        ) {
-                                            Text(
-                                                "OFFLINE",
-                                                modifier = Modifier.padding(
-                                                    horizontal = 6.dp,
-                                                    vertical = 2.dp
-                                                ),
-                                                color = Color.White,
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
+                                    Surface(
+                                        shape = RoundedCornerShape(50),
+                                        color = if (isPaid) Color(0xFF4CAF50) else Color(0xFFE53935)
+                                    ) {
+                                        Text(
+                                            if (isPaid) "PAGADO" else "PENDIENTE",
+                                            modifier = Modifier.padding(
+                                                horizontal = 6.dp,
+                                                vertical = 2.dp
+                                            ),
+                                            color = Color.White,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -152,17 +150,19 @@ fun HistoryScreen(navController: NavController) {
                                             color = Color.Gray
                                         )
                                     }
-                                    session.plateNumber?.let { plate ->
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                Icons.Filled.DirectionsCar,
-                                                contentDescription = null,
-                                                tint = Color.Gray,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text(plate, fontSize = 12.sp, color = Color.Gray)
-                                        }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Filled.DirectionsCar,
+                                            contentDescription = null,
+                                            tint = Color.Gray,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            session.plateNumber,
+                                            fontSize = 12.sp,
+                                            color = Color.Gray
+                                        )
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -183,6 +183,14 @@ fun HistoryScreen(navController: NavController) {
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 18.sp,
                                         color = Color(0xFF1565C0)
+                                    )
+                                }
+                                session.receiptNumber?.let { receipt ->
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        "Comprobante: $receipt",
+                                        fontSize = 11.sp,
+                                        color = Color.Gray
                                     )
                                 }
                             }

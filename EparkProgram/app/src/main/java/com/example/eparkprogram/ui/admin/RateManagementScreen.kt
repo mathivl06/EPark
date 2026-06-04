@@ -17,36 +17,46 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-
-data class ZoneRate(val id: Int, val name: String, var currentRate: Int)
+import com.example.eparkprogram.data.remote.AdminZoneDto
+import com.example.eparkprogram.data.repository.ZoneRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RateManagementScreen(navController: NavController) {
 
-    var zones by remember {
-        mutableStateOf(listOf(
-            ZoneRate(1, "Zona A - Centro", 500),
-            ZoneRate(2, "Zona B - Plaza", 400),
-            ZoneRate(3, "Zona C - Mercado", 350),
-            ZoneRate(4, "Zona D - Parque", 300),
-            ZoneRate(5, "Zona E - Hospital", 450)
-        ))
-    }
-    var selectedZone by remember { mutableStateOf<ZoneRate?>(null) }
+    val zoneRepository = remember { ZoneRepository() }
+    var zones by remember { mutableStateOf<List<AdminZoneDto>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMsg by remember { mutableStateOf("") }
+    var selectedZone by remember { mutableStateOf<AdminZoneDto?>(null) }
     var newRate by remember { mutableStateOf("") }
     var rateError by remember { mutableStateOf("") }
     var showDialog by remember { mutableStateOf(false) }
+    var isSaving by remember { mutableStateOf(false) }
     var showSuccessDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        try {
+            zones = zoneRepository.getAdminZones()
+        } catch (e: Exception) {
+            errorMsg = "No se pudieron cargar las zonas"
+        } finally {
+            isLoading = false
+        }
+    }
 
     if (showDialog && selectedZone != null) {
         AlertDialog(
-            onDismissRequest = { showDialog = false },
+            onDismissRequest = { if (!isSaving) showDialog = false },
             title = { Text("Actualizar tarifa") },
             text = {
                 Column {
-                    Text("${selectedZone!!.name}", fontWeight = FontWeight.Bold)
-                    Text("Tarifa actual: ₡${selectedZone!!.currentRate}/hora", color = Color.Gray, fontSize = 13.sp)
+                    Text(selectedZone!!.zoneName, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Tarifa actual: ₡${String.format("%.0f", selectedZone!!.hourlyRate)}/hora",
+                        color = Color.Gray,
+                        fontSize = 13.sp
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
                         value = newRate,
@@ -56,7 +66,8 @@ fun RateManagementScreen(navController: NavController) {
                         supportingText = { if (rateError.isNotEmpty()) Text(rateError) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         shape = RoundedCornerShape(12.dp),
-                        singleLine = true
+                        singleLine = true,
+                        enabled = !isSaving
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Card(
@@ -75,24 +86,50 @@ fun RateManagementScreen(navController: NavController) {
             confirmButton = {
                 Button(
                     onClick = {
-                        val rate = newRate.toIntOrNull()
-                        if (rate == null || rate <= 0) {
+                        val rate = newRate.toDoubleOrNull()
+                        if (rate == null || rate < 0) {
                             rateError = "Ingresá una tarifa válida"
-                        } else {
-                            zones = zones.map {
-                                if (it.id == selectedZone!!.id) it.copy(currentRate = rate) else it
-                            }
-                            showDialog = false
-                            showSuccessDialog = true
+                            return@Button
                         }
+                        isSaving = true
                     },
+                    enabled = !isSaving,
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
-                ) { Text("Confirmar") }
+                ) {
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Confirmar")
+                    }
+                }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) { Text("Cancelar") }
+                TextButton(
+                    onClick = { showDialog = false },
+                    enabled = !isSaving
+                ) { Text("Cancelar") }
             }
         )
+    }
+
+    if (isSaving && selectedZone != null) {
+        LaunchedEffect(isSaving) {
+            try {
+                val rate = newRate.toDouble()
+                zoneRepository.updateZoneTariff(selectedZone!!.zoneId, rate)
+                zones = zoneRepository.getAdminZones()
+                showDialog = false
+                showSuccessDialog = true
+            } catch (e: Exception) {
+                rateError = "No se pudo actualizar la tarifa"
+            } finally {
+                isSaving = false
+            }
+        }
     }
 
     if (showSuccessDialog) {
@@ -123,58 +160,90 @@ fun RateManagementScreen(navController: NavController) {
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD))
-                ) {
-                    Text(
-                        "Los cambios de tarifa aplican únicamente a sesiones nuevas y no afectan sesiones activas en curso.",
-                        modifier = Modifier.padding(12.dp),
-                        fontSize = 13.sp,
-                        color = Color(0xFF1565C0)
-                    )
+
+        when {
+            isLoading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Color(0xFF1565C0))
                 }
-                Spacer(modifier = Modifier.height(8.dp))
             }
-            items(zones) { zone ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(2.dp)
+            errorMsg.isNotEmpty() -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(errorMsg, color = Color.Red)
+                }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(zone.name, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFE3F2FD)
+                            )
+                        ) {
                             Text(
-                                "₡${zone.currentRate}/hora",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
+                                "Los cambios de tarifa aplican únicamente a sesiones nuevas y no afectan sesiones activas en curso.",
+                                modifier = Modifier.padding(12.dp),
+                                fontSize = 13.sp,
                                 color = Color(0xFF1565C0)
                             )
                         }
-                        IconButton(
-                            onClick = {
-                                selectedZone = zone
-                                newRate = zone.currentRate.toString()
-                                showDialog = true
-                            }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    items(zones) { zone ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = CardDefaults.cardElevation(2.dp)
                         ) {
-                            Icon(Icons.Filled.Edit, contentDescription = "Editar", tint = Color(0xFF1565C0))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        zone.zoneName,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp
+                                    )
+                                    Text(
+                                        zone.description ?: zone.municipalityName,
+                                        fontSize = 12.sp,
+                                        color = Color.Gray
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        "₡${String.format("%.0f", zone.hourlyRate)}/hora",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF1565C0)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = {
+                                        selectedZone = zone
+                                        newRate = String.format("%.0f", zone.hourlyRate)
+                                        rateError = ""
+                                        showDialog = true
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Edit,
+                                        contentDescription = "Editar",
+                                        tint = Color(0xFF1565C0)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
