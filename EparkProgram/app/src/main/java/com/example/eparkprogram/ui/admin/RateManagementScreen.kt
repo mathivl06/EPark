@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.eparkprogram.data.remote.AdminZoneDto
 import com.example.eparkprogram.data.repository.ZoneRepository
+import retrofit2.HttpException
+import org.json.JSONObject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,13 +37,56 @@ fun RateManagementScreen(navController: NavController) {
     var isSaving by remember { mutableStateOf(false) }
     var showSuccessDialog by remember { mutableStateOf(false) }
 
+    // FIX: igual que en LoginScreen, extrae el mensaje real del servidor
+    fun parseError(e: Exception): String {
+        return try {
+            if (e is HttpException) {
+                val body = e.response()?.errorBody()?.string()
+                if (!body.isNullOrBlank()) {
+                    JSONObject(body).optString("message", "").ifBlank { null }
+                } else null
+            } else null
+        } catch (ex: Exception) {
+            null
+        } ?: when {
+            e.message?.contains("401") == true ->
+                "Sin autorización — hacé login real con el admin"
+            e.message?.contains("400") == true ->
+                "El admin no tiene municipalidad asignada en el sistema"
+            e.message?.contains("Unable to resolve host") == true ->
+                "Sin conexión al servidor"
+            else -> e.message ?: "Error desconocido"
+        }
+    }
+
     LaunchedEffect(Unit) {
         try {
             zones = zoneRepository.getAdminZones()
         } catch (e: Exception) {
-            errorMsg = "No se pudieron cargar las zonas"
+            // FIX: muestra el error real del servidor en vez de mensaje genérico
+            errorMsg = "No se pudieron cargar las zonas: ${parseError(e)}"
         } finally {
             isLoading = false
+        }
+    }
+
+    // FIX: LaunchedEffect fuera del bloque if, con guard al inicio
+    // Esto evita que Compose lo ignore cuando isSaving cambia a true
+    LaunchedEffect(isSaving) {
+        if (!isSaving) return@LaunchedEffect
+        val zone = selectedZone ?: run { isSaving = false; return@LaunchedEffect }
+        try {
+            val rate = newRate.toDouble()
+            zoneRepository.updateZoneTariff(zone.zoneId, rate)
+            // Recarga la lista para reflejar la nueva tarifa en pantalla
+            zones = zoneRepository.getAdminZones()
+            showDialog = false
+            showSuccessDialog = true
+        } catch (e: Exception) {
+            // FIX: muestra el error real del servidor
+            rateError = "Error: ${parseError(e)}"
+        } finally {
+            isSaving = false
         }
     }
 
@@ -71,7 +116,9 @@ fun RateManagementScreen(navController: NavController) {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFFF3E0)
+                        ),
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
@@ -91,6 +138,7 @@ fun RateManagementScreen(navController: NavController) {
                             rateError = "Ingresá una tarifa válida"
                             return@Button
                         }
+                        rateError = ""
                         isSaving = true
                     },
                     enabled = !isSaving,
@@ -116,27 +164,13 @@ fun RateManagementScreen(navController: NavController) {
         )
     }
 
-    if (isSaving && selectedZone != null) {
-        LaunchedEffect(isSaving) {
-            try {
-                val rate = newRate.toDouble()
-                zoneRepository.updateZoneTariff(selectedZone!!.zoneId, rate)
-                zones = zoneRepository.getAdminZones()
-                showDialog = false
-                showSuccessDialog = true
-            } catch (e: Exception) {
-                rateError = "No se pudo actualizar la tarifa"
-            } finally {
-                isSaving = false
-            }
-        }
-    }
-
     if (showSuccessDialog) {
         AlertDialog(
             onDismissRequest = { showSuccessDialog = false },
             title = { Text("Tarifa actualizada") },
-            text = { Text("El cambio se registró correctamente y aplica a nuevas sesiones.") },
+            text = {
+                Text("El cambio se registró correctamente y aplica a nuevas sesiones.")
+            },
             confirmButton = {
                 Button(onClick = { showSuccessDialog = false }) { Text("Aceptar") }
             }
@@ -163,15 +197,72 @@ fun RateManagementScreen(navController: NavController) {
 
         when {
             isLoading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
                     CircularProgressIndicator(color = Color(0xFF1565C0))
                 }
             }
+
             errorMsg.isNotEmpty() -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(errorMsg, color = Color.Red)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // FIX: error en Card roja igual que el resto de pantallas
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.ErrorOutline,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Card(
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFFFEBEE)
+                            )
+                        ) {
+                            Text(
+                                errorMsg,
+                                color = Color(0xFFB71C1C),
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
+                    }
                 }
             }
+
+            zones.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Filled.AttachMoney,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("No hay zonas disponibles", color = Color.Gray)
+                    }
+                }
+            }
+
             else -> {
                 LazyColumn(
                     modifier = Modifier
@@ -197,6 +288,7 @@ fun RateManagementScreen(navController: NavController) {
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                     }
+
                     items(zones) { zone ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -222,12 +314,32 @@ fun RateManagementScreen(navController: NavController) {
                                         color = Color.Gray
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        "₡${String.format("%.0f", zone.hourlyRate)}/hora",
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF1565C0)
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            "₡${String.format("%.0f", zone.hourlyRate)}/hora",
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF1565C0)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        // Muestra el estado de la zona junto a la tarifa
+                                        Surface(
+                                            shape = RoundedCornerShape(50),
+                                            color = if (zone.status == "ACTIVE")
+                                                Color(0xFFE8F5E9) else Color(0xFFFAFAFA)
+                                        ) {
+                                            Text(
+                                                zone.status,
+                                                modifier = Modifier.padding(
+                                                    horizontal = 6.dp,
+                                                    vertical = 2.dp
+                                                ),
+                                                fontSize = 10.sp,
+                                                color = if (zone.status == "ACTIVE")
+                                                    Color(0xFF2E7D32) else Color.Gray
+                                            )
+                                        }
+                                    }
                                 }
                                 IconButton(
                                     onClick = {
@@ -239,7 +351,7 @@ fun RateManagementScreen(navController: NavController) {
                                 ) {
                                     Icon(
                                         Icons.Filled.Edit,
-                                        contentDescription = "Editar",
+                                        contentDescription = "Editar tarifa",
                                         tint = Color(0xFF1565C0)
                                     )
                                 }

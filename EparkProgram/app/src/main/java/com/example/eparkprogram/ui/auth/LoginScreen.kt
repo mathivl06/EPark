@@ -22,9 +22,33 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.eparkprogram.data.repository.AuthRepository
 import kotlinx.coroutines.launch
+import org.json.JSONObject
+import retrofit2.HttpException
 
 // Cambiá esto a false antes de entregar
-private const val DEV_MODE = true
+private const val DEV_MODE = false //Esto es para pruebas rápidas
+
+// FIX: extrae el campo "message" del body JSON del error HTTP.
+// Sin esto, Retrofit lanza "HTTP 401 Unauthorized" en vez del mensaje real del servidor
+// como "Credenciales inválidas" o "Admin user has no municipality assigned".
+private fun parseErrorMessage(error: Throwable): String {
+    return try {
+        if (error is HttpException) {
+            val body = error.response()?.errorBody()?.string()
+            if (!body.isNullOrBlank()) {
+                JSONObject(body).optString("message", "").ifBlank { null }
+            } else null
+        } else null
+    } catch (e: Exception) {
+        null
+    } ?: when {
+        error.message?.contains("401") == true -> "Correo o contraseña incorrectos"
+        error.message?.contains("403") == true -> "No tenés permiso para acceder"
+        error.message?.contains("Unable to resolve host") == true -> "Sin conexión a internet"
+        error.message?.contains("timeout") == true -> "El servidor tardó demasiado, intentá de nuevo"
+        else -> error.message ?: "No se pudo iniciar sesión"
+    }
+}
 
 @Composable
 fun LoginScreen(
@@ -157,7 +181,8 @@ fun LoginScreen(
                             }
                             .onFailure { error ->
                                 isLoading = false
-                                generalError = error.message ?: "No se pudo iniciar sesion"
+                                // FIX: usa parseErrorMessage para mostrar el mensaje real
+                                generalError = parseErrorMessage(error)
                             }
                     }
                 }
@@ -182,7 +207,18 @@ fun LoginScreen(
 
         if (generalError.isNotBlank()) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text(generalError, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+            ) {
+                Text(
+                    generalError,
+                    color = Color(0xFFB71C1C),
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))

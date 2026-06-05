@@ -11,6 +11,7 @@ object AuthSession {
     var token: String? = null
     var userRole: String? = null
     var fullName: String? = null
+    var userEmail: String? = null
 }
 
 object RetrofitClient {

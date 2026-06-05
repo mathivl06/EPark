@@ -79,8 +79,15 @@ fun NavGraph(navController: NavHostController) {
             MunicipalitySelectionScreen(navController = navController)
         }
 
+        // Ruta sin municipalityId — por si se navega directo desde otro lugar
         composable(Routes.NEARBY_ZONES) {
-            NearbyZonesScreen(navController = navController)
+            NearbyZonesScreen(navController = navController, municipalityId = null)
+        }
+
+        // FIX: ruta con municipalityId — viene desde MunicipalitySelectionScreen
+        composable("${Routes.NEARBY_ZONES}/{municipalityId}") { backStack ->
+            val municipalityId = backStack.arguments?.getString("municipalityId")?.toIntOrNull()
+            NearbyZonesScreen(navController = navController, municipalityId = municipalityId)
         }
 
         composable(Routes.START_PARKING) {
@@ -119,6 +126,7 @@ fun NavGraph(navController: NavHostController) {
             val zoneId = backStack.arguments?.getString("zoneId")?.toIntOrNull()
             ZoneEditorScreen(navController = navController, zoneId = zoneId)
         }
+
         composable(Routes.ZONE_EDITOR) {
             ZoneEditorScreen(navController = navController, zoneId = null)
         }
@@ -130,7 +138,5 @@ fun NavGraph(navController: NavHostController) {
         composable(Routes.REPORTS) {
             ReportsScreen(navController = navController)
         }
-
-        // El resto de pantallas las vas agregando acá conforme las creás
     }
 }

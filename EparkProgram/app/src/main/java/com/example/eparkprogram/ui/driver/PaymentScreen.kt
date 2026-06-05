@@ -14,6 +14,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.eparkprogram.data.session.ParkingSelection
 import com.example.eparkprogram.navigation.Routes
 
 data class SavedCard(val id: Int, val last4: String, val brand: String, val expiry: String)
@@ -31,12 +32,19 @@ fun PaymentScreen(navController: NavController) {
         SavedCard(2, "5555", "Mastercard", "08/26")
     )
 
+    // FIX: datos reales de la sesión terminada en vez de valores hardcodeados
+    val finished = ParkingSelection.lastFinishedSession
+    val activeSession = ParkingSelection.lastActiveSession
+    val elapsedMin = finished?.elapsedMinutes ?: 0
+    val durationHours = elapsedMin / 60
+    val durationMins = elapsedMin % 60
+    val totalAmount = finished?.totalAmount ?: 0.0
     val sessionSummary = mapOf(
-        "zone" to "Zona A - Centro",
-        "spot" to "0042",
-        "duration" to "1h 42m",
-        "rate" to "₡500/hora",
-        "total" to "₡850"
+        "zone"     to (activeSession?.zoneName ?: "—"),
+        "spot"     to (activeSession?.spaceCode ?: "—"),
+        "duration" to "${durationHours}h ${durationMins}m",
+        "rate"     to "₡${"%.0f".format(activeSession?.hourlyRateApplied ?: 0.0)}/hora",
+        "total"    to "₡${"%.0f".format(totalAmount)}"
     )
 
     Scaffold(
@@ -183,10 +191,10 @@ fun PaymentScreen(navController: NavController) {
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         listOf(
-                            "Zona" to sessionSummary["zone"],
-                            "Espacio" to sessionSummary["spot"],
+                            "Zona"     to sessionSummary["zone"],
+                            "Espacio"  to sessionSummary["spot"],
                             "Duración" to sessionSummary["duration"],
-                            "Tarifa" to sessionSummary["rate"]
+                            "Tarifa"   to sessionSummary["rate"]
                         ).forEach { (label, value) ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -225,7 +233,11 @@ fun PaymentScreen(navController: NavController) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(Icons.Filled.CreditCard, tint = Color(0xFF1565C0), contentDescription = null)
+                        Icon(
+                            Icons.Filled.CreditCard,
+                            tint = Color(0xFF1565C0),
+                            contentDescription = null
+                        )
                         Text(
                             "${selectedCard?.brand} •••• ${selectedCard?.last4}",
                             fontWeight = FontWeight.Medium
@@ -281,7 +293,12 @@ fun PaymentScreen(navController: NavController) {
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text("N° comprobante", color = Color.Gray, fontSize = 13.sp)
-                                Text("REC-20260529-001", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                                // FIX: usa el sessionId real como referencia del comprobante
+                                Text(
+                                    "REC-${finished?.sessionId ?: "—"}",
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 13.sp
+                                )
                             }
                         }
                     }
@@ -293,7 +310,9 @@ fun PaymentScreen(navController: NavController) {
             if (currentStep < 2) {
                 Button(
                     onClick = { currentStep++ },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
                 ) {
@@ -302,18 +321,26 @@ fun PaymentScreen(navController: NavController) {
                         fontSize = 16.sp
                     )
                 }
+                // Paso 2 — Completado (solo cambia el botón final)
             } else {
                 Button(
                     onClick = {
-                        navController.navigate(Routes.DRIVER_HOME) {
-                            popUpTo(Routes.DRIVER_HOME) { inclusive = true }
+                        // Limpia los datos de sesión
+                        ParkingSelection.lastFinishedSession = null
+                        ParkingSelection.lastActiveSession = null
+                        // FIX: navega al historial para que el conductor vea su sesión recién pagada,
+                        // en vez de ir al home donde el historial no se recarga automáticamente
+                        navController.navigate(Routes.HISTORY) {
+                            popUpTo(Routes.DRIVER_HOME) { inclusive = false }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
                 ) {
-                    Text("Volver al inicio", fontSize = 16.sp)
+                    Text("Ver mi historial", fontSize = 16.sp)
                 }
             }
         }

@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.eparkprogram.data.remote.AdminReportSummary
 import com.example.eparkprogram.data.remote.RetrofitClient
+import org.json.JSONObject
+import retrofit2.HttpException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,11 +30,34 @@ fun ReportsScreen(navController: NavController) {
     var startDate by remember { mutableStateOf("01/05/2026") }
     var endDate by remember { mutableStateOf("31/05/2026") }
 
+    // FIX: misma función parseError que en otras pantallas admin
+    fun parseError(e: Exception): String {
+        return try {
+            if (e is HttpException) {
+                val body = e.response()?.errorBody()?.string()
+                if (!body.isNullOrBlank()) {
+                    JSONObject(body).optString("message", "").ifBlank { null }
+                } else null
+            } else null
+        } catch (ex: Exception) {
+            null
+        } ?: when {
+            e.message?.contains("401") == true ->
+                "Sin autorización — hacé login real con el admin"
+            e.message?.contains("400") == true ->
+                "El admin no tiene municipalidad asignada en el sistema"
+            e.message?.contains("Unable to resolve host") == true ->
+                "Sin conexión al servidor"
+            else -> e.message ?: "Error desconocido"
+        }
+    }
+
     LaunchedEffect(Unit) {
         try {
             summary = RetrofitClient.api.getAdminReportSummary()
         } catch (e: Exception) {
-            errorMsg = "No se pudo cargar el reporte"
+            // FIX: muestra el error real en vez de "No se pudo cargar el reporte"
+            errorMsg = "Error al cargar reporte: ${parseError(e)}"
         } finally {
             isLoading = false
         }
@@ -105,15 +130,44 @@ fun ReportsScreen(navController: NavController) {
             when {
                 isLoading -> {
                     Box(
-                        modifier = Modifier.fillMaxWidth().height(80.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(color = Color(0xFF1565C0))
                     }
                 }
+
                 errorMsg.isNotEmpty() -> {
-                    Text(errorMsg, color = Color.Red, fontSize = 13.sp)
+                    // FIX: Card roja con el error real del servidor
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFFEBEE)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.ErrorOutline,
+                                contentDescription = null,
+                                tint = Color(0xFFB71C1C),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                errorMsg,
+                                color = Color(0xFFB71C1C),
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
                 }
+
                 summary != null -> {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         listOf(
@@ -156,7 +210,7 @@ fun ReportsScreen(navController: NavController) {
                 }
             }
 
-            // Desglose por zona — pendiente de backend
+            // Desglose por zona
             Text("Ingresos por zona", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Card(
                 modifier = Modifier.fillMaxWidth(),

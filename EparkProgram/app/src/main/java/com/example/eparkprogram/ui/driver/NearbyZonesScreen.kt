@@ -52,14 +52,21 @@ import com.example.eparkprogram.navigation.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NearbyZonesScreen(navController: NavController) {
+fun NearbyZonesScreen(
+    navController: NavController,
+    municipalityId: Int? = null   // FIX: recibe el id de la municipalidad seleccionada
+) {
     val zoneRepository = remember { ZoneRepository() }
     var zones by remember { mutableStateOf<List<ParkingZone>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
-        runCatching { zoneRepository.getZones() }
+    // FIX: se usa municipalityId como key para que recargue si cambia,
+    // y se pasa al API para filtrar zonas por municipalidad
+    LaunchedEffect(municipalityId) {
+        isLoading = true
+        error = ""
+        runCatching { zoneRepository.getZones(municipalityId) }
             .onSuccess {
                 zones = it
                 isLoading = false
@@ -179,24 +186,46 @@ private fun ZoneCard(zone: ParkingZone, onStartParking: () -> Unit) {
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            Text(zone.description ?: zone.municipalityName, fontSize = 13.sp, color = Color.Gray)
+            Text(
+                zone.description ?: zone.municipalityName,
+                fontSize = 13.sp,
+                color = Color.Gray
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.DirectionsWalk, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(14.dp))
+                    Icon(
+                        Icons.Filled.DirectionsWalk,
+                        contentDescription = null,
+                        tint = Color(0xFF1565C0),
+                        modifier = Modifier.size(14.dp)
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Disponible", fontSize = 12.sp)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.AttachMoney, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(14.dp))
+                    Icon(
+                        Icons.Filled.AttachMoney,
+                        contentDescription = null,
+                        tint = Color(0xFF1565C0),
+                        modifier = Modifier.size(14.dp)
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("${zone.currencyCode} ${"%.0f".format(zone.hourlyRate)}/h", fontSize = 12.sp)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Schedule, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(14.dp))
+                    Icon(
+                        Icons.Filled.Schedule,
+                        contentDescription = null,
+                        tint = Color(0xFF1565C0),
+                        modifier = Modifier.size(14.dp)
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("${zone.operationStartTime}-${zone.operationEndTime}", fontSize = 12.sp)
+                    Text(
+                        "${zone.operationStartTime}-${zone.operationEndTime}",
+                        fontSize = 12.sp
+                    )
                 }
             }
 

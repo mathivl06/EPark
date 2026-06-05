@@ -16,18 +16,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.eparkprogram.data.model.Vehicle
+import com.example.eparkprogram.data.remote.AuthSession
+import com.example.eparkprogram.data.repository.ParkingRepository
 import com.example.eparkprogram.navigation.Routes
 import com.example.eparkprogram.ui.shared.BottomNavBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(navController: NavController) {
+    val parkingRepository = remember { ParkingRepository() }
+    var vehicles by remember { mutableStateOf<List<Vehicle>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
 
-    val driverName = "Juan Pérez"
-    val driverEmail = "juan.perez@gmail.com"
-    val driverPhone = "8888-8888"
-    val vehicles = listOf("ABC-1234 — Toyota Corolla", "XYZ-5678 — Honda Civic")
-    val paymentMethods = listOf("Visa •••• 4242", "Mastercard •••• 5555")
+    // Lee los datos reales del usuario desde la sesión activa
+    val driverName = AuthSession.fullName.orEmpty().ifBlank { "Usuario" }
+    val driverEmail = AuthSession.userEmail.orEmpty()
+
+    LaunchedEffect(Unit) {
+        runCatching { parkingRepository.getVehicles() }
+            .onSuccess { vehicles = it }
+        isLoading = false
+    }
 
     Scaffold(
         topBar = {
@@ -71,12 +81,15 @@ fun ProfileScreen(navController: NavController) {
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(driverName, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text(driverEmail, fontSize = 13.sp, color = Color.Gray)
+                    if (driverEmail.isNotBlank()) {
+                        Text(driverEmail, fontSize = 13.sp, color = Color.Gray)
+                    }
                 }
             }
 
-            // Datos personales
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+
+                // Datos personales
                 Text(
                     "Datos personales",
                     fontWeight = FontWeight.Bold,
@@ -89,19 +102,22 @@ fun ProfileScreen(navController: NavController) {
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        listOf(
-                            Icons.Filled.Person to driverName,
-                            Icons.Filled.Email to driverEmail,
-                            Icons.Filled.Phone to driverPhone
-                        ).forEachIndexed { index, (icon, value) ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(Icons.Filled.Person, contentDescription = null, tint = Color(0xFF1565C0))
+                            Text(driverName.ifBlank { "—" }, fontSize = 14.sp)
+                        }
+                        if (driverEmail.isNotBlank()) {
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Icon(icon, contentDescription = null, tint = Color(0xFF1565C0))
-                                Text(value, fontSize = 14.sp)
+                                Icon(Icons.Filled.Email, contentDescription = null, tint = Color(0xFF1565C0))
+                                Text(driverEmail, fontSize = 14.sp)
                             }
-                            if (index < 2) Divider(modifier = Modifier.padding(vertical = 8.dp))
                         }
                     }
                 }
@@ -121,53 +137,37 @@ fun ProfileScreen(navController: NavController) {
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        vehicles.forEachIndexed { index, vehicle ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    Icons.Filled.DirectionsCar,
-                                    contentDescription = null,
-                                    tint = Color(0xFF1565C0)
-                                )
-                                Text(vehicle, fontSize = 14.sp)
+                        when {
+                            isLoading -> CircularProgressIndicator(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .align(Alignment.CenterHorizontally),
+                                color = Color(0xFF1565C0),
+                                strokeWidth = 2.dp
+                            )
+                            vehicles.isEmpty() -> Text(
+                                "Sin vehículos registrados",
+                                fontSize = 14.sp,
+                                color = Color.Gray
+                            )
+                            else -> vehicles.forEachIndexed { index, vehicle ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Filled.DirectionsCar,
+                                        contentDescription = null,
+                                        tint = Color(0xFF1565C0)
+                                    )
+                                    Text(vehicle.plateNumber, fontSize = 14.sp)
+                                    vehicle.alias?.let {
+                                        Text(" — $it", fontSize = 12.sp, color = Color.Gray)
+                                    }
+                                }
+                                if (index < vehicles.size - 1)
+                                    Divider(modifier = Modifier.padding(vertical = 8.dp))
                             }
-                            if (index < vehicles.size - 1)
-                                Divider(modifier = Modifier.padding(vertical = 8.dp))
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Métodos de pago
-                Text(
-                    "Métodos de pago",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        paymentMethods.forEachIndexed { index, method ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(
-                                    Icons.Filled.CreditCard,
-                                    contentDescription = null,
-                                    tint = Color(0xFF1565C0)
-                                )
-                                Text(method, fontSize = 14.sp)
-                            }
-                            if (index < paymentMethods.size - 1)
-                                Divider(modifier = Modifier.padding(vertical = 8.dp))
                         }
                     }
                 }
@@ -177,11 +177,17 @@ fun ProfileScreen(navController: NavController) {
                 // Cerrar sesión
                 OutlinedButton(
                     onClick = {
+                        AuthSession.token = null
+                        AuthSession.userRole = null
+                        AuthSession.fullName = null
+                        AuthSession.userEmail = null
                         navController.navigate(Routes.LOGIN) {
                             popUpTo(0) { inclusive = true }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE53935))
                 ) {

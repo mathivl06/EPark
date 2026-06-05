@@ -14,6 +14,7 @@ class AuthRepository(
         AuthSession.token = response.token
         AuthSession.userRole = response.user.roleCode
         AuthSession.fullName = response.user.fullName
+        AuthSession.userEmail = response.user.email
         return response.user
     }
 
@@ -36,6 +37,7 @@ class AuthRepository(
         AuthSession.token = response.token
         AuthSession.userRole = response.user.roleCode
         AuthSession.fullName = response.user.fullName
+        AuthSession.userEmail = response.user.email
         return response.user
     }
 }

@@ -42,7 +42,7 @@ fun ZoneEditorScreen(navController: NavController, zoneId: Int? = null) {
     var spotsError by remember { mutableStateOf("") }
     var rateError by remember { mutableStateOf("") }
 
-    // Si estamos editando cargamos los datos existentes
+    // Si estamos editando, carga los datos existentes
     LaunchedEffect(zoneId) {
         if (zoneId != null) {
             try {
@@ -58,10 +58,41 @@ fun ZoneEditorScreen(navController: NavController, zoneId: Int? = null) {
                     isActive = zone.status == "ACTIVE"
                 }
             } catch (e: Exception) {
-                errorMsg = "No se pudo cargar la zona"
+                // FIX: muestra el error real en vez de mensaje genérico
+                errorMsg = "No se pudo cargar la zona: ${e.message}"
             } finally {
                 isLoading = false
             }
+        }
+    }
+
+    // FIX: LaunchedEffect de guardado movido aquí arriba, dentro del scope del Composable
+    // pero fuera del Scaffold, para que Compose lo detecte correctamente
+    LaunchedEffect(isSaving) {
+        if (!isSaving) return@LaunchedEffect
+        try {
+            val request = AdminZoneRequest(
+                zoneName = zoneName.trim(),
+                description = address.trim().ifBlank { null },
+                operationStartTime = startTime,
+                operationEndTime = endTime,
+                totalSpaces = spots.toInt(),
+                status = if (isActive) "ACTIVE" else "INACTIVE",
+                hourlyRate = rate.toDouble()
+            )
+            if (isEditing && zoneId != null) {
+                zoneRepository.updateAdminZone(zoneId, request)
+            } else {
+                zoneRepository.createAdminZone(request)
+            }
+            showSavedDialog = true
+        } catch (e: Exception) {
+            // FIX: muestra el mensaje exacto del servidor para ayudar a diagnosticar
+            // el error más común es "Admin user has no municipality assigned"
+            // lo cual significa que el admin debe hacer login real, no usar el botón de dev
+            errorMsg = "Error al guardar: ${e.message}"
+        } finally {
+            isSaving = false
         }
     }
 
@@ -126,7 +157,18 @@ fun ZoneEditorScreen(navController: NavController, zoneId: Int? = null) {
         ) {
 
             if (errorMsg.isNotEmpty()) {
-                Text(errorMsg, color = Color.Red, fontSize = 13.sp)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                ) {
+                    Text(
+                        errorMsg,
+                        color = Color(0xFFB71C1C),
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
             }
 
             OutlinedTextField(
@@ -209,17 +251,8 @@ fun ZoneEditorScreen(navController: NavController, zoneId: Int? = null) {
             Button(
                 onClick = {
                     if (!validate()) return@Button
+                    errorMsg = ""
                     isSaving = true
-                    val request = AdminZoneRequest(
-                        zoneName = zoneName.trim(),
-                        description = address.trim().ifBlank { null },
-                        operationStartTime = startTime,
-                        operationEndTime = endTime,
-                        totalSpaces = spots.toInt(),
-                        status = if (isActive) "ACTIVE" else "INACTIVE",
-                        hourlyRate = rate.toDouble()
-                    )
-                    // La llamada real se hace con LaunchedEffect al cambiar isSaving
                 },
                 enabled = !isSaving,
                 modifier = Modifier
@@ -239,33 +272,6 @@ fun ZoneEditorScreen(navController: NavController, zoneId: Int? = null) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(if (isEditing) "Guardar cambios" else "Crear zona", fontSize = 16.sp)
                 }
-            }
-        }
-    }
-
-    // Ejecuta la llamada a la API cuando isSaving cambia a true
-    if (isSaving) {
-        LaunchedEffect(isSaving) {
-            try {
-                val request = AdminZoneRequest(
-                    zoneName = zoneName.trim(),
-                    description = address.trim().ifBlank { null },
-                    operationStartTime = startTime,
-                    operationEndTime = endTime,
-                    totalSpaces = spots.toInt(),
-                    status = if (isActive) "ACTIVE" else "INACTIVE",
-                    hourlyRate = rate.toDouble()
-                )
-                if (isEditing && zoneId != null) {
-                    zoneRepository.updateAdminZone(zoneId, request)
-                } else {
-                    zoneRepository.createAdminZone(request)
-                }
-                showSavedDialog = true
-            } catch (e: Exception) {
-                errorMsg = "No se pudo guardar la zona"
-            } finally {
-                isSaving = false
             }
         }
     }

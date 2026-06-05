@@ -50,9 +50,13 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.eparkprogram.data.model.ParkingSession
 import com.example.eparkprogram.data.repository.ParkingRepository
+import com.example.eparkprogram.data.session.ParkingSelection
 import com.example.eparkprogram.navigation.Routes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+// FIX: reemplazado java.time.OffsetDateTime (requiere API 26) por SimpleDateFormat (API 24+)
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,7 +82,38 @@ fun ActiveSessionScreen(navController: NavController) {
             }
     }
 
-    LaunchedEffect(session?.sessionId) {
+    // FIX: usa SimpleDateFormat en vez de java.time para parsear startedAt (API 24+)
+    LaunchedEffect(session?.sessionId, session?.startedAt) {
+        val currentSession = session ?: return@LaunchedEffect
+        val startMs = try {
+            // Intenta los formatos ISO 8601 más comunes que puede enviar el servidor
+            val formats = listOf(
+                "yyyy-MM-dd'T'HH:mm:ssXXX",
+                "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+                "yyyy-MM-dd'T'HH:mm:ss'Z'",
+                "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+            )
+            var parsed = 0L
+            var found = false
+            for (format in formats) {
+                if (found) break
+                try {
+                    val sdf = SimpleDateFormat(format, Locale.US)
+                    sdf.isLenient = false
+                    val date = sdf.parse(currentSession.startedAt)
+                    if (date != null) {
+                        parsed = date.time
+                        found = true
+                    }
+                } catch (ex: Exception) {
+                    // intenta el siguiente formato
+                }
+            }
+            if (found) parsed else System.currentTimeMillis()
+        } catch (e: Exception) {
+            System.currentTimeMillis()
+        }
+        elapsedSeconds = (System.currentTimeMillis() - startMs) / 1000L
         while (session != null) {
             delay(1000)
             elapsedSeconds++
@@ -102,7 +137,11 @@ fun ActiveSessionScreen(navController: NavController) {
                 Column {
                     Text("Confirmas que queres finalizar tu sesion de parqueo?")
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Total aproximado: $costFormatted", fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
+                    Text(
+                        "Total aproximado: $costFormatted",
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1565C0)
+                    )
                 }
             },
             confirmButton = {
@@ -112,8 +151,10 @@ fun ActiveSessionScreen(navController: NavController) {
                         showEndDialog = false
                         scope.launch {
                             runCatching { parkingRepository.finishSession(currentSession.sessionId) }
-                                .onSuccess {
+                                .onSuccess { finished ->
                                     isFinishing = false
+                                    ParkingSelection.lastFinishedSession = finished
+                                    ParkingSelection.lastActiveSession = currentSession
                                     navController.navigate(Routes.PAYMENT) {
                                         popUpTo(Routes.ACTIVE_SESSION) { inclusive = true }
                                     }
@@ -188,10 +229,24 @@ fun ActiveSessionScreen(navController: NavController) {
                                 .padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Icon(Icons.Filled.AccessTime, contentDescription = null, tint = Color(0xFFBBDEFB), modifier = Modifier.size(32.dp))
+                            Icon(
+                                Icons.Filled.AccessTime,
+                                contentDescription = null,
+                                tint = Color(0xFFBBDEFB),
+                                modifier = Modifier.size(32.dp)
+                            )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(timeFormatted, fontSize = 48.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            Text("Tiempo transcurrido", color = Color(0xFFBBDEFB), fontSize = 13.sp)
+                            Text(
+                                timeFormatted,
+                                fontSize = 48.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                "Tiempo transcurrido",
+                                color = Color(0xFFBBDEFB),
+                                fontSize = 13.sp
+                            )
                         }
                     }
 
@@ -205,9 +260,19 @@ fun ActiveSessionScreen(navController: NavController) {
                         ) {
                             Column {
                                 Text("Costo aproximado", color = Color.Gray, fontSize = 13.sp)
-                                Text(costFormatted, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1565C0))
+                                Text(
+                                    costFormatted,
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1565C0)
+                                )
                             }
-                            Icon(Icons.Filled.AttachMoney, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(36.dp))
+                            Icon(
+                                Icons.Filled.AttachMoney,
+                                contentDescription = null,
+                                tint = Color(0xFF1565C0),
+                                modifier = Modifier.size(36.dp)
+                            )
                         }
                     }
 
@@ -235,7 +300,11 @@ fun ActiveSessionScreen(navController: NavController) {
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
                     ) {
                         if (isFinishing) {
-                            CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
                         } else {
                             Icon(Icons.Filled.Stop, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))

@@ -81,7 +81,11 @@ fun DriverHomeScreen(navController: NavController) {
                 actions = {
                     IconButton(onClick = { }) {
                         BadgedBox(badge = { Badge { Text("3") } }) {
-                            Icon(Icons.Filled.Notifications, contentDescription = "Notificaciones", tint = Color.White)
+                            Icon(
+                                Icons.Filled.Notifications,
+                                contentDescription = "Notificaciones",
+                                tint = Color.White
+                            )
                         }
                     }
                 },
@@ -154,7 +158,12 @@ private fun WelcomeCard(driverName: String, vehiclePlate: String) {
             Text(driverName, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.DirectionsCar, contentDescription = null, tint = Color(0xFFBBDEFB), modifier = Modifier.size(16.dp))
+                Icon(
+                    Icons.Filled.DirectionsCar,
+                    contentDescription = null,
+                    tint = Color(0xFFBBDEFB),
+                    modifier = Modifier.size(16.dp)
+                )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(vehiclePlate, color = Color(0xFFBBDEFB), fontSize = 13.sp)
             }
@@ -201,12 +210,22 @@ private fun ActiveSessionCard(zone: String, space: String, rate: Double, onOpen:
             Spacer(modifier = Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Filled.AccessTime, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(20.dp))
+                    Icon(
+                        Icons.Filled.AccessTime,
+                        contentDescription = null,
+                        tint = Color(0xFF1565C0),
+                        modifier = Modifier.size(20.dp)
+                    )
                     Text("Activa", fontWeight = FontWeight.Bold)
                     Text("Tiempo", fontSize = 11.sp, color = Color.Gray)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Filled.AttachMoney, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(20.dp))
+                    Icon(
+                        Icons.Filled.AttachMoney,
+                        contentDescription = null,
+                        tint = Color(0xFF1565C0),
+                        modifier = Modifier.size(20.dp)
+                    )
                     Text("CRC ${"%.0f".format(rate)}/h", fontWeight = FontWeight.Bold)
                     Text("Tarifa", fontSize = 11.sp, color = Color.Gray)
                 }
@@ -231,26 +250,44 @@ private fun QuickActions(navController: NavController) {
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Card(
-            onClick = { navController.navigate(Routes.NEARBY_ZONES) },
+            // FIX: "Parquear" ahora pasa primero por selección de municipalidad
+            onClick = { navController.navigate(Routes.MUNICIPALITY_SELECT) },
             modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD))
         ) {
-            Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Filled.LocalParking, contentDescription = null, tint = Color(0xFF1565C0), modifier = Modifier.size(32.dp))
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    Icons.Filled.LocalParking,
+                    contentDescription = null,
+                    tint = Color(0xFF1565C0),
+                    modifier = Modifier.size(32.dp)
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("Parquear", fontWeight = FontWeight.Medium, fontSize = 13.sp)
             }
         }
 
         Card(
+            // "Zonas cercanas" sigue yendo directo, sin filtro de municipalidad
             onClick = { navController.navigate(Routes.NEARBY_ZONES) },
             modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
         ) {
-            Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Filled.Map, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(32.dp))
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    Icons.Filled.Map,
+                    contentDescription = null,
+                    tint = Color(0xFF2E7D32),
+                    modifier = Modifier.size(32.dp)
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("Zonas cercanas", fontWeight = FontWeight.Medium, fontSize = 13.sp)
             }

@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.eparkprogram.data.remote.AdminReportSummary
+import com.example.eparkprogram.data.remote.AuthSession
 import com.example.eparkprogram.data.remote.RetrofitClient
 import com.example.eparkprogram.navigation.Routes
 
@@ -76,14 +77,6 @@ fun AdminDashboardScreen(navController: NavController) {
         )
     )
 
-    val recentActivity = listOf(
-        Triple(Icons.Filled.PlayArrow, "Sesión iniciada — Zona A", "Hace 2 min"),
-        Triple(Icons.Filled.AttachMoney, "Pago recibido — ₡850", "Hace 5 min"),
-        Triple(Icons.Filled.Warning, "Espacio 0042 vencido", "Hace 8 min"),
-        Triple(Icons.Filled.PlayArrow, "Sesión iniciada — Zona C", "Hace 12 min"),
-        Triple(Icons.Filled.Receipt, "Nueva multa registrada", "Hace 15 min")
-    )
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -98,7 +91,12 @@ fun AdminDashboardScreen(navController: NavController) {
                             )
                         }
                     }
+                    // FIX: limpia AuthSession al cerrar sesión
                     IconButton(onClick = {
+                        AuthSession.token = null
+                        AuthSession.userRole = null
+                        AuthSession.fullName = null
+                        AuthSession.userEmail = null
                         navController.navigate(Routes.LOGIN) {
                             popUpTo(0) { inclusive = true }
                         }
@@ -244,47 +242,8 @@ fun AdminDashboardScreen(navController: NavController) {
                 }
             }
 
-            Text("Actividad reciente", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    recentActivity.forEachIndexed { index, (icon, description, time) ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = Color(0xFFE3F2FD),
-                                    modifier = Modifier.size(36.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            icon,
-                                            contentDescription = null,
-                                            tint = Color(0xFF1565C0),
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
-                                Text(description, fontSize = 13.sp)
-                            }
-                            Text(time, fontSize = 11.sp, color = Color.Gray)
-                        }
-                        if (index < recentActivity.size - 1)
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    }
-                }
-            }
+            // FIX: sección "Actividad reciente" eliminada porque tenía datos hardcodeados falsos.
+            // Cuando el backend exponga un endpoint de actividad reciente se puede volver a agregar.
         }
     }
 }
