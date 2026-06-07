@@ -19,6 +19,7 @@ import com.example.eparkprogram.data.model.Fine
 import com.example.eparkprogram.data.repository.ParkingRepository
 import com.example.eparkprogram.navigation.Routes
 import com.example.eparkprogram.ui.shared.BottomNavBar
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,7 +32,7 @@ fun FinesScreen(navController: NavController) {
     var selectedTab by remember { mutableStateOf(0) }
     var showPayDialog by remember { mutableStateOf(false) }
     var selectedFine by remember { mutableStateOf<Fine?>(null) }
-
+    val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         try {
             fines = parkingRepository.getFines()
@@ -64,7 +65,7 @@ fun FinesScreen(navController: NavController) {
                 Button(
                     onClick = {
                         showPayDialog = false
-                        navController.navigate(Routes.PAYMENT)
+                        navController.navigate("${Routes.PAYMENT_FINE}/${selectedFine!!.fineId}")
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
                 ) { Text("Pagar") }

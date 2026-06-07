@@ -82,6 +82,10 @@ fun ZoneEditorScreen(navController: NavController, zoneId: Int? = null) {
             )
             if (isEditing && zoneId != null) {
                 zoneRepository.updateAdminZone(zoneId, request)
+                val newRate = rate.toDoubleOrNull()
+                if (newRate != null) {
+                    zoneRepository.updateZoneTariff(zoneId, newRate)
+                }
             } else {
                 zoneRepository.createAdminZone(request)
             }

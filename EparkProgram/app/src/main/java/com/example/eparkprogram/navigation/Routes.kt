@@ -16,6 +16,8 @@ object Routes {
     const val FINES = "fines"
     const val PROFILE = "profile"
 
+    const val PAYMENT_FINE = "payment_fine"
+
     // Admin
     const val ADMIN_HOME = "admin_home"
     const val ZONE_MANAGEMENT = "zone_management"

@@ -41,8 +41,13 @@ interface ApiService {
     @POST("driver/sessions/{id}/finish")
     suspend fun finishSession(@Path("id") sessionId: Long): FinishedSession
 
+    @POST("driver/sessions/{id}/pay")
+    suspend fun paySession(@Path("id") sessionId: Long): retrofit2.Response<Unit>
     @GET("driver/fines")
     suspend fun getFines(): List<Fine>
+
+    @POST("driver/fines/{id}/pay")
+    suspend fun payFine(@Path("id") fineId: Long): retrofit2.Response<Unit>
 
     @GET("driver/sessions/history")
     suspend fun getSessionHistory(): List<SessionHistoryDto>
