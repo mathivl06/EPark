@@ -489,6 +489,76 @@ app.post("/driver/sessions/:id/finish", requireAuth, requireRole("DRIVER"), asyn
     return res.status(500).json({ message: "Could not finish session", detail: error.message });
   }
 });
+app.post("/driver/fines/:id/pay", requireAuth, requireRole("DRIVER"), async (req, res) => {
+  const fineId = Number(req.params.id);
+  const userId = Number(req.user.sub);
+
+  if (!Number.isInteger(fineId) || fineId <= 0) {
+    return res.status(400).json({ message: "Invalid fine id" });
+  }
+
+  const pool = await getPool();
+  try {
+    const result = await pool.request()
+      .input("fineId", sql.Int, fineId)
+      .input("userId", sql.Int, userId)
+      .query(`
+        UPDATE Fines
+        SET status = 'PAID', updatedAt = SYSUTCDATETIME()
+        WHERE fineId = @fineId AND userId = @userId AND status = 'PENDING' AND deleted = 0
+      `);
+
+    if (result.rowsAffected[0] === 0) {
+      return res.status(404).json({ message: "Fine not found or already paid" });
+    }
+
+    return res.json({ message: "Fine paid successfully" });
+  } catch (error) {
+    return res.status(500).json({ message: "Could not pay fine", detail: error.message });
+  }
+});
+
+app.post("/driver/sessions/:id/pay", requireAuth, requireRole("DRIVER"), async (req, res) => {
+  const sessionId = Number(req.params.id);
+  const userId = Number(req.user.sub);
+
+  if (!Number.isInteger(sessionId) || sessionId <= 0) {
+    return res.status(400).json({ message: "Invalid session id" });
+  }
+
+  const pool = await getPool();
+  try {
+    const session = await pool.request()
+      .input("sessionId", sql.Int, sessionId)
+      .input("userId", sql.Int, userId)
+      .query(`
+        SELECT TOP 1 sessionId, totalAmount, municipalityId
+        FROM ParkingSessions
+        WHERE sessionId = @sessionId AND userId = @userId
+          AND status = 'FINISHED' AND deleted = 0
+      `);
+
+    if (session.recordset.length === 0) {
+      return res.status(404).json({ message: "Session not found or not finished" });
+    }
+
+    const row = session.recordset[0];
+
+    const inserted = await pool.request()
+      .input("sessionId", sql.BigInt, row.sessionId)
+      .input("userId", sql.Int, userId)
+      .input("amount", sql.Decimal(10, 2), row.totalAmount)
+      .query(`
+        INSERT INTO Payments(userId, paymentTargetType, sessionId, amount, currencyCode, status, requestedAt, createdAt)
+        OUTPUT INSERTED.paymentId
+        VALUES (@userId, 'SESSION', @sessionId, @amount, 'CRC', 'APPROVED', SYSUTCDATETIME(), SYSUTCDATETIME())
+      `);
+
+    return res.json({ paymentId: inserted.recordset[0].paymentId });
+  } catch (error) {
+    return res.status(500).json({ message: "Could not register payment", detail: error.message });
+  }
+});
 
 app.get("/driver/fines", requireAuth, requireRole("DRIVER"), async (req, res) => {
   const pool = await getPool();
@@ -846,7 +916,7 @@ app.get("/admin/reports/summary", requireAuth, requireRole("MUNICIPAL_ADMIN"), a
     .input("municipalityId", sql.Int, municipalityId)
     .query(`
       SELECT
-        COUNT(DISTINCT z.zoneId) AS totalZones,
+        COUNT(DISTINCT CASE WHEN z.status = 'ACTIVE' THEN z.zoneId END) AS totalZones,
         COUNT(DISTINCT CASE WHEN s.status = 'ACTIVE' THEN s.sessionId END) AS activeSessions,
         COALESCE(SUM(CASE WHEN p.status = 'APPROVED' THEN p.amount ELSE 0 END), 0) AS revenue
       FROM ParkingZones z

@@ -18,6 +18,8 @@ import androidx.navigation.NavController
 import com.example.eparkprogram.data.remote.AdminZoneDto
 import com.example.eparkprogram.data.repository.ZoneRepository
 import com.example.eparkprogram.navigation.Routes
+import kotlinx.coroutines.launch
+import com.example.eparkprogram.data.remote.AdminZoneRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,10 +32,13 @@ fun ZoneManagementScreen(navController: NavController) {
     var showMenuFor by remember { mutableStateOf<Int?>(null) }
     var showDeactivateDialog by remember { mutableStateOf<AdminZoneDto?>(null) }
     var isDeactivating by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
+    val scope = rememberCoroutineScope()
+    var refreshTick by remember { mutableStateOf(0) }
+    LaunchedEffect(refreshTick) {
+        isLoading = true
         try {
             zones = zoneRepository.getAdminZones()
+            errorMsg = ""
         } catch (e: Exception) {
             errorMsg = "No se pudieron cargar las zonas"
         } finally {
@@ -41,20 +46,56 @@ fun ZoneManagementScreen(navController: NavController) {
         }
     }
 
+    DisposableEffect(navController) {
+        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
+            if (destination.route == Routes.ZONE_MANAGEMENT) {
+                refreshTick++
+            }
+        }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose { navController.removeOnDestinationChangedListener(listener)  }
+    }
     if (showDeactivateDialog != null) {
+        val isZoneActive = showDeactivateDialog!!.status == "ACTIVE"
+        val newStatus = if (isZoneActive) "INACTIVE" else "ACTIVE"
         AlertDialog(
             onDismissRequest = { showDeactivateDialog = null },
-            title = { Text("Desactivar zona") },
-            text = { Text("¿Confirmás que querés desactivar ${showDeactivateDialog!!.zoneName}?") },
+            title = { Text(if (isZoneActive) "Desactivar zona" else "Activar zona") },
+            text = { Text("¿Confirmás que querés ${if (isZoneActive) "desactivar" else "activar"} ${showDeactivateDialog!!.zoneName}?") },
             confirmButton = {
                 Button(
                     onClick = {
                         val zone = showDeactivateDialog!!
                         isDeactivating = true
                         showDeactivateDialog = null
+                        scope.launch {
+                            try {
+                                zoneRepository.updateAdminZone(
+                                    zone.zoneId,
+                                    com.example.eparkprogram.data.remote.AdminZoneRequest(
+                                        zoneName = zone.zoneName,
+                                        description = zone.description,
+                                        latitude = zone.latitude,
+                                        longitude = zone.longitude,
+                                        operationStartTime = zone.operationStartTime,
+                                        operationEndTime = zone.operationEndTime,
+                                        totalSpaces = zone.totalSpaces,
+                                        status = newStatus,
+                                        hourlyRate = zone.hourlyRate,
+                                        currencyCode = zone.currencyCode
+                                    )
+                                )
+                                zones = zoneRepository.getAdminZones()
+                            } catch (_: Exception) {
+                            } finally {
+                                isDeactivating = false
+                            }
+                        }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
-                ) { Text("Desactivar") }
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isZoneActive) Color(0xFFE53935) else Color(0xFF4CAF50)
+                    )
+                ) { Text(if (isZoneActive) "Desactivar" else "Activar") }
             },
             dismissButton = {
                 TextButton(onClick = { showDeactivateDialog = null }) { Text("Cancelar") }

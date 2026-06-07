@@ -166,7 +166,7 @@ fun HistoryScreen(navController: NavController) {
                         val mins = elapsedMin % 60
                         val duration = "${hours}h ${mins}m"
                         val amount = "₡${String.format(Locale.getDefault(), "%.0f", session.totalAmount ?: 0.0)}"
-                        val isPaid = session.paymentStatus == "APPROVED"
+                        val isPaid = session.paymentStatus == "APPROVED" || session.status == "FINISHED"
 
                         // FIX: usa SimpleDateFormat en vez de java.time (compatible con API 24+)
                         val formattedDate = remember(session.startedAt) {
