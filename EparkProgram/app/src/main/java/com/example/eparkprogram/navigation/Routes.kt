@@ -15,6 +15,7 @@ object Routes {
     const val HISTORY = "history"
     const val FINES = "fines"
     const val PROFILE = "profile"
+    const val NOTIFICATIONS = "notifications"
 
     // Admin
     const val ADMIN_HOME = "admin_home"

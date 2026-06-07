@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -54,11 +55,13 @@ import com.example.eparkprogram.data.model.Vehicle
 import com.example.eparkprogram.data.repository.ParkingRepository
 import com.example.eparkprogram.data.session.ParkingSelection
 import com.example.eparkprogram.navigation.Routes
+import com.example.eparkprogram.notifications.NotificationHelper
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StartParkingScreen(navController: NavController) {
+    val context = LocalContext.current
     val parkingRepository = remember { ParkingRepository() }
     val scope = rememberCoroutineScope()
     val selectedZone = ParkingSelection.selectedZone
@@ -198,14 +201,23 @@ fun StartParkingScreen(navController: NavController) {
                             scope.launch {
                                 runCatching {
                                     parkingRepository.startSession(vehicle.vehicleId, zone.zoneId, spotCode)
-                                }.onSuccess {
+                                }.onSuccess { sessionId ->
                                     isSubmitting = false
+                                    // 🔔 Iniciar servicio de monitoreo y programar notificación
+                                    val startTime = System.currentTimeMillis()
+                                    NotificationHelper.createNotificationChannel(context)
+                                    com.example.eparkprogram.notifications.NotificationService.startService(
+                                        context = context,
+                                        sessionId = sessionId,
+                                        startTimeMillis = startTime,
+                                        durationMinutes = 180
+                                    )
                                     navController.navigate(Routes.ACTIVE_SESSION) {
                                         popUpTo(Routes.START_PARKING) { inclusive = true }
                                     }
-                                }.onFailure {
+                                }.onFailure { error ->
                                     isSubmitting = false
-                                    generalError = it.message ?: "No se pudo iniciar la sesion"
+                                    generalError = error.message ?: "No se pudo iniciar la sesion"
                                 }
                             }
                         }

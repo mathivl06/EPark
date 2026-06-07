@@ -16,6 +16,7 @@ import com.example.eparkprogram.ui.driver.PaymentScreen
 import com.example.eparkprogram.ui.driver.FinesScreen
 import com.example.eparkprogram.ui.driver.HistoryScreen
 import com.example.eparkprogram.ui.driver.ProfileScreen
+import com.example.eparkprogram.ui.shared.NotificationsScreen
 import com.example.eparkprogram.ui.admin.AdminDashboardScreen
 import com.example.eparkprogram.ui.admin.ZoneManagementScreen
 import com.example.eparkprogram.ui.admin.ZoneEditorScreen
@@ -112,6 +113,10 @@ fun NavGraph(navController: NavHostController) {
 
         composable(Routes.PROFILE) {
             ProfileScreen(navController = navController)
+        }
+
+        composable(Routes.NOTIFICATIONS) {
+            NotificationsScreen(navController = navController)
         }
 
         composable(Routes.ADMIN_HOME) {

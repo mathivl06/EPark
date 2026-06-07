@@ -82,7 +82,7 @@ fun AdminDashboardScreen(navController: NavController) {
             TopAppBar(
                 title = { Text("Panel administrativo", fontWeight = FontWeight.Bold) },
                 actions = {
-                    IconButton(onClick = { }) {
+                    IconButton(onClick = { navController.navigate(Routes.NOTIFICATIONS) }) {
                         BadgedBox(badge = { Badge { Text("2") } }) {
                             Icon(
                                 Icons.Filled.Notifications,

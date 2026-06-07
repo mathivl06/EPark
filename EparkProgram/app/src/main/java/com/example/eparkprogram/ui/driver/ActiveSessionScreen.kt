@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,15 +53,16 @@ import com.example.eparkprogram.data.model.ParkingSession
 import com.example.eparkprogram.data.repository.ParkingRepository
 import com.example.eparkprogram.data.session.ParkingSelection
 import com.example.eparkprogram.navigation.Routes
+import com.example.eparkprogram.notifications.NotificationHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-// FIX: reemplazado java.time.OffsetDateTime (requiere API 26) por SimpleDateFormat (API 24+)
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActiveSessionScreen(navController: NavController) {
+    val context = LocalContext.current
     val parkingRepository = remember { ParkingRepository() }
     val scope = rememberCoroutineScope()
     var session by remember { mutableStateOf<ParkingSession?>(null) }
@@ -82,11 +84,9 @@ fun ActiveSessionScreen(navController: NavController) {
             }
     }
 
-    // FIX: usa SimpleDateFormat en vez de java.time para parsear startedAt (API 24+)
     LaunchedEffect(session?.sessionId, session?.startedAt) {
         val currentSession = session ?: return@LaunchedEffect
         val startMs = try {
-            // Intenta los formatos ISO 8601 más comunes que puede enviar el servidor
             val formats = listOf(
                 "yyyy-MM-dd'T'HH:mm:ssXXX",
                 "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
@@ -105,9 +105,7 @@ fun ActiveSessionScreen(navController: NavController) {
                         parsed = date.time
                         found = true
                     }
-                } catch (ex: Exception) {
-                    // intenta el siguiente formato
-                }
+                } catch (ex: Exception) { }
             }
             if (found) parsed else System.currentTimeMillis()
         } catch (e: Exception) {
@@ -153,6 +151,9 @@ fun ActiveSessionScreen(navController: NavController) {
                             runCatching { parkingRepository.finishSession(currentSession.sessionId) }
                                 .onSuccess { finished ->
                                     isFinishing = false
+                                    // 🔔 Detener monitoreo y cancelar notificaciones
+                                    com.example.eparkprogram.notifications.NotificationService.stopService(context)
+                                    NotificationHelper.cancelSessionExpiration(context, currentSession.sessionId)
                                     ParkingSelection.lastFinishedSession = finished
                                     ParkingSelection.lastActiveSession = currentSession
                                     navController.navigate(Routes.PAYMENT) {

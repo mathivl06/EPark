@@ -79,7 +79,7 @@ fun DriverHomeScreen(navController: NavController) {
             TopAppBar(
                 title = { Text("e-park", fontWeight = FontWeight.Bold) },
                 actions = {
-                    IconButton(onClick = { }) {
+                    IconButton(onClick = { navController.navigate(Routes.NOTIFICATIONS) }) {
                         BadgedBox(badge = { Badge { Text("3") } }) {
                             Icon(
                                 Icons.Filled.Notifications,

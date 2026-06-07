@@ -1,5 +1,8 @@
 package com.example.eparkprogram.ui.driver
 
+import android.location.Location
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,9 +17,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -41,6 +45,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,26 +55,55 @@ import com.example.eparkprogram.data.model.ParkingZone
 import com.example.eparkprogram.data.repository.ZoneRepository
 import com.example.eparkprogram.data.session.ParkingSelection
 import com.example.eparkprogram.navigation.Routes
+import com.example.eparkprogram.utils.LocationHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NearbyZonesScreen(
     navController: NavController,
-    municipalityId: Int? = null   // FIX: recibe el id de la municipalidad seleccionada
+    municipalityId: Int? = null,
 ) {
+    val context = LocalContext.current
     val zoneRepository = remember { ZoneRepository() }
     var zones by remember { mutableStateOf<List<ParkingZone>>(emptyList()) }
+    var userLocation by remember { mutableStateOf<Location?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf("") }
 
-    // FIX: se usa municipalityId como key para que recargue si cambia,
-    // y se pasa al API para filtrar zonas por municipalidad
-    LaunchedEffect(municipalityId) {
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions.values.all { it }) {
+            LocationHelper.getCurrentLocation(context) { location ->
+                userLocation = location
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (LocationHelper.hasLocationPermissions(context)) {
+            LocationHelper.getCurrentLocation(context) { location ->
+                userLocation = location
+            }
+        } else {
+            permissionLauncher.launch(LocationHelper.locationPermissions)
+        }
+    }
+
+    LaunchedEffect(municipalityId, userLocation) {
         isLoading = true
         error = ""
         runCatching { zoneRepository.getZones(municipalityId) }
-            .onSuccess {
-                zones = it
+            .onSuccess { fetchedZones ->
+                zones = if (userLocation != null) {
+                    LocationHelper.sortZonesByDistance(
+                        fetchedZones,
+                        userLocation!!.latitude,
+                        userLocation!!.longitude
+                    )
+                } else {
+                    fetchedZones
+                }
                 isLoading = false
             }
             .onFailure {
@@ -83,7 +118,7 @@ fun NearbyZonesScreen(
                 title = { Text("Zonas cercanas") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Atras")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atras")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -135,7 +170,7 @@ fun NearbyZonesScreen(
                     }
 
                     items(zones) { zone ->
-                        ZoneCard(zone = zone) {
+                        ZoneCard(zone = zone, userLocation = userLocation) {
                             ParkingSelection.selectedZone = zone
                             navController.navigate(Routes.START_PARKING)
                         }
@@ -147,8 +182,11 @@ fun NearbyZonesScreen(
 }
 
 @Composable
-private fun ZoneCard(zone: ParkingZone, onStartParking: () -> Unit) {
+private fun ZoneCard(zone: ParkingZone, userLocation: Location?, onStartParking: () -> Unit) {
     val isAvailable = zone.availableSpaces > 0
+    val distance = userLocation?.let {
+        LocationHelper.calculateDistance(it.latitude, it.longitude, zone.latitude, zone.longitude)
+    }
 
     Card(
         onClick = { if (isAvailable) onStartParking() },
@@ -192,45 +230,47 @@ private fun ZoneCard(zone: ParkingZone, onStartParking: () -> Unit) {
                 color = Color.Gray
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.DirectionsWalk,
-                        contentDescription = null,
-                        tint = Color(0xFF1565C0),
-                        modifier = Modifier.size(14.dp)
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Metadatos organizados en dos columnas para mejor alineación
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    distance?.let {
+                        InfoItem(
+                            icon = Icons.Default.LocationOn,
+                            text = if (it < 1000) "${it.toInt()}m" else "%.1fkm".format(it / 1000f)
+                        )
+                    }
+                    InfoItem(
+                        icon = Icons.AutoMirrored.Filled.DirectionsWalk,
+                        text = "Disponible"
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Disponible", fontSize = 12.sp)
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.AttachMoney,
-                        contentDescription = null,
-                        tint = Color(0xFF1565C0),
-                        modifier = Modifier.size(14.dp)
+                
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    InfoItem(
+                        icon = Icons.Default.AttachMoney,
+                        text = "${zone.currencyCode} ${"%.0f".format(zone.hourlyRate)}/h"
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("${zone.currencyCode} ${"%.0f".format(zone.hourlyRate)}/h", fontSize = 12.sp)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.Schedule,
-                        contentDescription = null,
-                        tint = Color(0xFF1565C0),
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        "${zone.operationStartTime}-${zone.operationEndTime}",
-                        fontSize = 12.sp
+                    InfoItem(
+                        icon = Icons.Default.Schedule,
+                        text = "${zone.operationStartTime}-${zone.operationEndTime}"
                     )
                 }
             }
 
             if (isAvailable) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = onStartParking,
                     modifier = Modifier.fillMaxWidth(),
@@ -241,5 +281,24 @@ private fun ZoneCard(zone: ParkingZone, onStartParking: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun InfoItem(icon: ImageVector, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = Color(0xFF1565C0),
+            modifier = Modifier.size(14.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            color = Color.DarkGray,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
