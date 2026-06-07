@@ -17,6 +17,8 @@ object Routes {
     const val PROFILE = "profile"
     const val NOTIFICATIONS = "notifications"
 
+    const val PAYMENT_FINE = "payment_fine"
+
     // Admin
     const val ADMIN_HOME = "admin_home"
     const val ZONE_MANAGEMENT = "zone_management"

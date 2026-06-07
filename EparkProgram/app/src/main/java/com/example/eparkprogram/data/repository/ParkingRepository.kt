@@ -12,6 +12,9 @@ import com.example.eparkprogram.data.remote.StartSessionRequest
 class ParkingRepository(
     private val api: com.example.eparkprogram.data.remote.ApiService = RetrofitClient.api
 ) {
+
+    suspend fun paySession(sessionId: Long) = api.paySession(sessionId)
+    suspend fun payFine(fineId: Long) = api.payFine(fineId)
     suspend fun getDriverHome(): DriverHomeResponse = api.getDriverHome()
 
     suspend fun getVehicles(): List<Vehicle> = api.getVehicles()

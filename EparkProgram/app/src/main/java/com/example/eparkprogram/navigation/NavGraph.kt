@@ -102,6 +102,10 @@ fun NavGraph(navController: NavHostController) {
         composable(Routes.PAYMENT) {
             PaymentScreen(navController = navController)
         }
+        composable("${Routes.PAYMENT_FINE}/{fineId}") { backStack ->
+            val fineId = backStack.arguments?.getString("fineId")?.toLongOrNull()
+            PaymentScreen(navController = navController, fineId = fineId)
+        }
 
         composable(Routes.FINES) {
             FinesScreen(navController = navController)

@@ -16,16 +16,20 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.eparkprogram.data.session.ParkingSelection
 import com.example.eparkprogram.navigation.Routes
+import kotlinx.coroutines.launch
+import com.example.eparkprogram.data.repository.ParkingRepository
 
 data class SavedCard(val id: Int, val last4: String, val brand: String, val expiry: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PaymentScreen(navController: NavController) {
+fun PaymentScreen(navController: NavController, fineId: Long? = null) {
 
     var currentStep by remember { mutableStateOf(0) }
     val steps = listOf("Método", "Confirmar", "Completado")
     var selectedCardId by remember { mutableStateOf(1) }
+    val scope = rememberCoroutineScope()
+    val parkingRepository = remember { ParkingRepository() }
 
     val savedCards = listOf(
         SavedCard(1, "4242", "Visa", "12/25"),
@@ -309,7 +313,25 @@ fun PaymentScreen(navController: NavController) {
 
             if (currentStep < 2) {
                 Button(
-                    onClick = { currentStep++ },
+                    onClick = {
+                        if (currentStep == 1) {
+                            scope.launch {
+                                try {
+                                    if (fineId != null) {
+                                        parkingRepository.payFine(fineId)
+                                    } else {
+                                        val sessionId = finished?.sessionId
+                                        if (sessionId != null) {
+                                            parkingRepository.paySession(sessionId)
+                                        }
+                                    }
+                                } catch (_: Exception) { }
+                                currentStep++
+                            }
+                        } else {
+                            currentStep++
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
@@ -321,17 +343,19 @@ fun PaymentScreen(navController: NavController) {
                         fontSize = 16.sp
                     )
                 }
-                // Paso 2 — Completado (solo cambia el botón final)
             } else {
                 Button(
                     onClick = {
-                        // Limpia los datos de sesión
                         ParkingSelection.lastFinishedSession = null
                         ParkingSelection.lastActiveSession = null
-                        // FIX: navega al historial para que el conductor vea su sesión recién pagada,
-                        // en vez de ir al home donde el historial no se recarga automáticamente
-                        navController.navigate(Routes.HISTORY) {
-                            popUpTo(Routes.DRIVER_HOME) { inclusive = false }
+                        if (fineId != null) {
+                            navController.navigate(Routes.FINES) {
+                                popUpTo(Routes.DRIVER_HOME) { inclusive = false }
+                            }
+                        } else {
+                            navController.navigate(Routes.HISTORY) {
+                                popUpTo(Routes.DRIVER_HOME) { inclusive = false }
+                            }
                         }
                     },
                     modifier = Modifier
@@ -340,7 +364,7 @@ fun PaymentScreen(navController: NavController) {
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
                 ) {
-                    Text("Ver mi historial", fontSize = 16.sp)
+                    Text(if (fineId != null) "Ver mis multas" else "Ver mi historial", fontSize = 16.sp)
                 }
             }
         }
